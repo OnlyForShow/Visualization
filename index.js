@@ -1,8 +1,13 @@
+import {axis} from "./axis.js";
+
 document.addEventListener('DOMContentLoaded', init);
 
 let canvas;
 let ctx;
 let down_state = false;
+
+
+
 
 function init() {
     canvas = document.createElement('canvas');
