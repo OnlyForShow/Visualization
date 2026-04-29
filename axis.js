@@ -1,9 +1,9 @@
 
-let xstart = 300;
+let xstart = 800;
 let ystart = 300;
 
 
-let width = 500;
+let width = 1000;
 let height = 500;
 let yend = ystart + height;
 
@@ -18,8 +18,15 @@ class Axis
     {
         this.name = null;
         this.interpolation = null;
+        this.color = null;
     }
 };
+
+function initAxis()
+{
+    loadCSV();
+    parseData();
+}
 
 let axes = [];
 
@@ -35,27 +42,34 @@ function createInterpolation(data)
     //store this array or set in a seperate data structure
 }
 
+class data_lookup_structure
+{
+
+}
+
 function parseData()
 {
    
-    //for (let data_set of data)
-    //{
-    //    for( let i = 0 ; i < data_set.length; i++)
-    //    {
-    //        
-    //    }
-    //}
-    //
-    //let number_of_axes = data[0].length;
+    for (let data_set of data)
+    {
+        for( let i = 0 ; i < data_set.length; i++)
+        {
+            data_set[i]
+        }
+    }
 
-    for( let i = 0; i < 5; i++)
+    //assumption is here that first element represents the rest of the data set
+    //TODO: replace it with evaluation function
+    let number_of_axes = data[0].length;
+
+    for( let i = 0; i < number_of_axes; i++)
     {
         tmp = new Axis();
         tmp.name = i + ".";
         
         //Set the interpolation function which calculates max and min of the data set
         tmp.interpolation = createInterpolation(data);
-        
+        tmp.color = "#000000";
         axes.push(tmp);
         
         //Map
@@ -73,12 +87,12 @@ function loadCSV()
 function drawAxes(ctx)
 {
     let x_pos = xstart;
-    let distance = width/axises.length;
-    //We draw 2 axes and the connections between them
-    for(let i = 0; i < axises.length - 1; i++, x_pos+=distance)
+    let distance = width/axes.length;
+    //We draw 1 axis and the outgoing connections to the next axis
+    for(let i = 0; i < axes.length; i++, x_pos+=distance)
     {
-        let axis_pos_1 = order.get(i);
-        let axis_pos_2 = order.get(i+1);
+        let axis_pos_1 = order[i];
+        let axis_pos_2 = order[i+1];
         
         let current_axis = axes[axis_pos_1];
         let next_axis = axes[axis_pos_2];
@@ -87,15 +101,19 @@ function drawAxes(ctx)
         ctx.beginPath();
         ctx.moveTo(x_pos, ystart);
         ctx.lineTo(x_pos, yend);
-        ctx.strokeStyle = '#ff9999';
+        ctx.strokeStyle = current_axis.color;
         ctx.stroke();
 
-        //draw second axis
-        ctx.beginPath();
-        ctx.moveTo(x_pos + distance, ystart);
-        ctx.lineTo(x_pos + distance, yend);
-        ctx.strokeStyle = '#ff9999';
-        ctx.stroke();
+        if(i < axes.length - 1)
+        {
+            
+        	//draw connections
+        	//ctx.beginPath();
+        	//ctx.moveTo(x_pos + distance, ystart);
+        	//ctx.lineTo(x_pos + distance, yend);
+        	//ctx.strokeStyle = next_axis;
+        	//ctx.stroke();
 
+        }
     }
 }

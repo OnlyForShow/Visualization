@@ -1,6 +1,6 @@
-import {axis} from "./axis.js";
 
 document.addEventListener('DOMContentLoaded', init);
+
 
 let canvas;
 let ctx;
@@ -29,6 +29,8 @@ function init() {
     resize();
     window.addEventListener('resize', resize);
 
+    initAxis();
+    
     window.requestAnimationFrame(draw);
 }
 
@@ -41,12 +43,12 @@ function resize() {
 }
 
 function move(evt) {
-    if (!down_state) return;
-
-    ctx.beginPath();
-    ctx.arc(evt.x * window.devicePixelRatio, evt.y*window.devicePixelRatio, 4, 0, Math.PI * 2);
-    ctx.arc(evt.x, evt.y, 4, 0, Math.PI * 2);
-    ctx.fill();
+    //if (!down_state) return;
+    //
+    //ctx.beginPath();
+    //ctx.arc(evt.x * window.devicePixelRatio, evt.y*window.devicePixelRatio, 4, 0, Math.PI * 2);
+    //ctx.arc(evt.x, evt.y, 4, 0, Math.PI * 2);
+    //ctx.fill();
 }
 
 function down(evt) {
@@ -60,30 +62,32 @@ function up(evt) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.strokeStyle = '#FF9999';
-    ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(canvas.width / 2, 0, canvas.width / 2, canvas.height, canvas.width, canvas.height);
-    ctx.strokeStyle = '#000000';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.arc(canvas.width / 2, 0, 5, 0, Math.PI * 2);
-    ctx.moveTo(canvas.width / 2, canvas.height);
-    ctx.arc(canvas.width / 2, canvas.height, 5, 0, Math.PI * 2);
-    ctx.moveTo(canvas.width, canvas.height);
-    ctx.arc(canvas.width, canvas.height, 5, 0, Math.PI * 2);
-
-    ctx.fillStyle = '#FF0000';
-    ctx.fill();
+    drawAxes(ctx);
+    //ctx.beginPath();
+    //ctx.moveTo(0, 0);
+    //ctx.lineTo(canvas.width / 2, 0);
+    //ctx.lineTo(canvas.width / 2, canvas.height);
+    //ctx.lineTo(canvas.width, canvas.height);
+    //ctx.strokeStyle = '#FF9999';
+    //ctx.stroke();
+    //
+    //ctx.beginPath();
+    //ctx.moveTo(0, 0);
+    //ctx.bezierCurveTo(canvas.width / 2, 0, canvas.width / 2, canvas.height, canvas.width, canvas.height);
+    //ctx.strokeStyle = '#000000';
+    //ctx.stroke();
+    //
+    //ctx.beginPath();
+    //ctx.moveTo(0, 0);
+    //ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    //ctx.moveTo(canvas.width / 2, 0);
+    //ctx.arc(canvas.width / 2, 0, 5, 0, Math.PI * 2);
+    //ctx.moveTo(canvas.width / 2, canvas.height);
+    //ctx.arc(canvas.width / 2, canvas.height, 5, 0, Math.PI * 2);
+    //ctx.moveTo(canvas.width, canvas.height);
+    //ctx.arc(canvas.width, canvas.height, 5, 0, Math.PI * 2);
+    //
+    //ctx.fillStyle = '#FF0000';
+    //ctx.fill();
 }
