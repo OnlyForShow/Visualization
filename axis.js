@@ -16,8 +16,28 @@ class Axis
 {
     constructor()
     {
+        //Name that will be used for referencing the axis
         this.name = null;
+
+        //Position data in screen space
+        this.x1 = null;
+        this.y1 = null;
+        this.x2 = null;
+        this.y2 = null;
+        
+        //a lambda function that returns a real number between 0 and 1
+        //depending on the parameter
+        //if the parameter is a numerical value its output maps to 0 -> min and 1 -> max
+        //if the parameter is a categorical value its output maps to 0 -> first item 1 -> last item
+        // let min = 11.2; let max = 323.23;
+        // let LookUpTable = new Set(["Red","Green","Magenta"]);
+        //Example: let pos = axis.interpolation(23.1);
+        //         pos = 0.038137
+        //Example: let pos = axis.interpolation("Green");
+        //         pos = 0.5
         this.interpolation = null;
+
+        //Display-Color
         this.color = null;
     }
 };
@@ -33,7 +53,7 @@ let axes = [];
 function createInterpolation(data)
 {
     //Check whether data is numerical or categorical
-
+    if(Number.isFinite(data)
     //If numerical then get the maximum and minimum data element
 
     //If categorial then put the data into set datastructure
@@ -54,7 +74,7 @@ function parseData()
     {
         for( let i = 0 ; i < data_set.length; i++)
         {
-            data_set[i]
+            
         }
     }
 
