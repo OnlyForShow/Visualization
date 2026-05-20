@@ -1,13 +1,22 @@
 
-let xstart = 800;
-let ystart = 300;
+let xstart = 500;
+let ystart = 100;
 
 
 let width = 1000;
 let height = 500;
 let yend = ystart + height;
 
-let data = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
+let data = [[1,5,Math.exp(1),"Wow"],
+            [2,10,Math.exp(2),"Cool"],
+            [3,15,Math.exp(3),"Epic"],
+            [4,20,Math.exp(4),"Epic"],
+            [5,25,Math.exp(5),"Wow"],
+            [6,30,Math.exp(6),"Wow"],
+            [7,35,Math.exp(7),"Super"],
+            [8,40,Math.exp(8),"Zapper"],
+            [9,45,Math.exp(9),"Wow"],
+           ];
 
 let axes = [];
 let tuple_data = []; 
@@ -58,9 +67,9 @@ function initAxis()
 // Data[1] => [5,10,15]
 // Data[2] => [2.71,...]
 // Data[3] => ["Wow",
-function createInterpolation(data)
+function createInterpolation(__data)
 {
-    if ( data.length === 0)
+    if ( __data.length === 0)
     {
         throw new Error("createInterpolation: Data must not be empty");
     }
@@ -71,16 +80,19 @@ function createInterpolation(data)
     //Check whether data is numerical or categorical
     //isFinite() checks whether it is number
     //Make the assumption that the first element type is representative of every element in the tuple
-    if(Number.isFinite(data[0]))
+    if(Number.isFinite(__data[0]))
     {
         //If numerical then get the maximum and minimum data element
-        for(const elem in data)
+        for(const elem of __data)
         {
             if ( elem < MIN_VALUE ) MIN_VALUE = elem;
             if ( elem > MAX_VALUE ) MAX_VALUE = elem;
         }
 
         return (x) => {
+            
+            console.log("Numerical  x: "+x+" (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE): " + (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE));
+            console.log("MAX_VALUE: "+MAX_VALUE+"   MIN_VALUE: "+MIN_VALUE);
             return (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
         };
         
@@ -91,8 +103,10 @@ function createInterpolation(data)
 
         let ReferenceMap = new Map();
         let index = 0;
-        for(const elem in data)
+        for(const elem of __data)
         {
+            console.log("DATA: "+__data);
+            console.log("elem: "+elem);
             if(ReferenceMap.has(elem)) continue;
             ReferenceMap.set(elem, index++);
         }
@@ -101,6 +115,8 @@ function createInterpolation(data)
         MAX_VALUE = ReferenceMap.size - 1;
 
         return (x) => {
+            console.log("Categorical  x: "+x+" (ReferenceMap.get(x)/MAX_VALUE): " + (ReferenceMap.get(x)/MAX_VALUE));
+            console.log("MAX_VALUE: "+MAX_VALUE+"   ReferenceMap.get(x): "+ReferenceMap.get(x));            
             return (ReferenceMap.get(x)/MAX_VALUE);
         };
     }
@@ -167,25 +183,43 @@ function drawAxes(ctx)
 
         if(i < axes.length - 1)
         {
-            
+
         	//draw connections
 
-            for(const data_tuple in data)
+            for(let i = 0; i < data.length; i++)
             {
-                const value_current_axis = data_tuple[axis_pos_1];
-                const value_next_axis = data_tuple[axis_pos_2];
 
-                current_axis_x_pos = current_axis.interpolation(value_current_axis);
+                	const value_current_axis = data[i][axis_pos_1];
+                	const value_next_axis = data[i][axis_pos_2];
+                	
+                	console.log(axis_pos_1);
+                	console.log(axis_pos_2);
+                	console.log(value_current_axis);
+                	console.log(value_next_axis);
+                	
+                	console.log("==========================");
+                	
+                	const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
+                	const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
+                	
+                	
+                	
+                	
+                	const y_current = current_axis_relative_pos * (yend - ystart) + ystart;
+                	const y_next = next_axis_relative_pos * (yend - ystart) + ystart;
+                	
+                	
+                	
+                	ctx.beginPath();
+                	ctx.moveTo(x_pos, y_current);
+                	ctx.lineTo(x_pos + distance, y_next);
+                	ctx.strokeStyle = "#000000";
+                	ctx.stroke();
+
             }
              
-            current_axis.interpolation(
             
-        	//ctx.beginPath();
-        	//ctx.moveTo(x_pos + distance, ystart);
-        	//ctx.lineTo(x_pos + distance, yend);
-        	//ctx.strokeStyle = next_axis;
-        	//ctx.stroke();
-
+          
         }
     }
 }
