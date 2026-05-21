@@ -48,6 +48,9 @@ class Axis
         //         pos = 0.5
         this.interpolation = null;
 
+        this.max_value = null;
+        this.min_value = null;
+        
         //Display-Color
         this.color = null;
     }
@@ -67,7 +70,7 @@ function initAxis()
 // Data[1] => [5,10,15]
 // Data[2] => [2.71,...]
 // Data[3] => ["Wow",
-function createInterpolation(__data)
+function createInterpolation(axis, __data)
 {
     if ( __data.length === 0)
     {
@@ -89,6 +92,9 @@ function createInterpolation(__data)
             if ( elem > MAX_VALUE ) MAX_VALUE = elem;
         }
 
+        axis.min_value = MIN_VALUE.toFixed(2);
+        axis.max_value = MAX_VALUE.toFixed(2);
+        
         return (x) => {
             
             console.log("Numerical  x: "+x+" (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE): " + (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE));
@@ -103,17 +109,25 @@ function createInterpolation(__data)
 
         let ReferenceMap = new Map();
         let index = 0;
+
+        let first_element = __data[0];
+        let last_element = null;
+        
         for(const elem of __data)
         {
             console.log("DATA: "+__data);
             console.log("elem: "+elem);
             if(ReferenceMap.has(elem)) continue;
             ReferenceMap.set(elem, index++);
+            last_element = elem;
         }
 
         MIN_VALUE = 0;
         MAX_VALUE = ReferenceMap.size - 1;
 
+        axis.min_value = first_element;
+        axis.max_value = last_element;
+        
         return (x) => {
             console.log("Categorical  x: "+x+" (ReferenceMap.get(x)/MAX_VALUE): " + (ReferenceMap.get(x)/MAX_VALUE));
             console.log("MAX_VALUE: "+MAX_VALUE+"   ReferenceMap.get(x): "+ReferenceMap.get(x));            
@@ -145,7 +159,7 @@ function parseData()
         tmp.name = i + ".";
         
         //Set the interpolation function which calculates max and min of the data set
-        tmp.interpolation = createInterpolation(tuple_data[i]);
+        tmp.interpolation = createInterpolation(tmp, tuple_data[i]);
         tmp.color = "#000000";
         axes.push(tmp);
         
@@ -180,7 +194,29 @@ function drawAxes(ctx)
         ctx.lineTo(x_pos, yend);
         ctx.strokeStyle = current_axis.color;
         ctx.stroke();
+        ctx.closePath();
 
+        //Render max_value,min_value and name of axis
+        //min
+        ctx.font = "30px Arial";
+        ctx.textBaseline = "bottom";
+        ctx.textAlign = "center";
+        ctx.fillText(String(current_axis.min_value), x_pos ,ystart);
+
+        //max
+        ctx.font = "30px Arial";
+        ctx.textBaseline = "top";
+        ctx.textAlign = "center";
+        ctx.fillText(String(current_axis.max_value), x_pos ,yend);
+
+        //Name
+        ctx.font = "40px Arial";
+        ctx.textBaseline = "top";
+        ctx.textAlign = "center";
+        ctx.fillText(current_axis.name, x_pos ,yend + 40);
+
+        
+        
         if(i < axes.length - 1)
         {
 
