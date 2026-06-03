@@ -18,10 +18,8 @@ let data = [[1,5,Math.exp(1),"Wow"],
             [9,45,Math.exp(9),"Wow"],
            ];
 
-let axes = [];
-let tuple_data = []; 
-//If we want to rearrange the axes
-let order = [];
+
+
 
 class ParallelCoordinates
 {
@@ -42,49 +40,107 @@ class ParallelCoordinates
     parseData(data)
     {
         this.data = data;
+        let tuple_data = []
         for (let i = 0; i < this.data[0].length; i++)
     	{
     	    tuple_data.push([]);
     	    for( let j = 0 ; j < data.length; j++)
     	    {
-    	        tuple_data[i].push(data[j][i]);
+    	        tuple_data[i].push(this.data[j][i]);
     	    }
     	}
     	
     	//assumption is here that first element represents the rest of the data set
     	//TODO: replace it with evaluation function
-    	let number_of_axes = data[0].length;
-    	
+    	let number_of_axes = this.data[0].length;
+
+        //Generate Axis
     	for( let i = 0; i < number_of_axes; i++)
     	{
-    	    tmp = new Axis();
-    	    tmp.name = i + ".";
+    	    current_axis = new Axis();
+    	    current_axis.name = i + ".";
     	    
     	    //Set the interpolation function which calculates max and min of the data set
-    	    tmp.interpolation = createInterpolation(tmp, tuple_data[i]);
-    	    tmp.color = "#000000";
-    	    axes.push(tmp);
+    	    current_axis.interpolation = createInterpolation(current_axis, tuple_data[i]);
+    	    current_axis.color = "#000000";
+    	    this.axes.push(current_axis);
     	    
-    	    //Map
-    	    order.push(i);
+    	    // Order position
+    	    this.axes_order.push(i);
     	
     	}
+
+        //Generate LineSegments
+        for( let i = 0; i < number_of_axes - 1; i++)
+        {
+            for(let j = 0; j < data.length; j++)
+            {
+
+                	const value_current_axis = data[j][axis_pos_1];
+                	const value_next_axis = data[j][axis_pos_2];
+                	
+                	console.log(axis_pos_1);
+                	console.log(axis_pos_2);
+                	console.log(value_current_axis);
+                	console.log(value_next_axis);
+                	
+                	
+                	const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
+                	const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
+                	
+                	
+                	
+                	
+                	const y_current = current_axis_relative_pos * (yend - ystart) + ystart;
+                	const y_next = next_axis_relative_pos * (yend - ystart) + ystart;
+                	
+                	
+                	
+                	ctx.beginPath();
+                	ctx.moveTo(x_pos, y_current);
+                	ctx.lineTo(x_pos + distance, y_next);
+                	ctx.strokeStyle = "#000000";
+                	ctx.stroke();
+
+            
+
+            }
+        }
+        
     }
 
+    render(ctx)
+    {
+
+    }
+
+    renderAxis(ctx)
+    {
+
+    }
+
+    renderSegments(ctx)
+    {
+            
     
 
     
+    }
+
 }
 
 class LineSegment
 {
-    construct(x1,y1,x2,y2,tuple)
+    // e.g. color = "#000000" Black
+    //               #RRGGBB
+    constructor(x1,y1,x2,y2,color,tuple)
     {
         this.x1 = x1;
         this.y1 = y1;
         this.x2 = x2;
         this.y2 = y2;
         this.tuple = tuple; // reference of the data tuple
+        this.color = color; // String
         
     }
 }
@@ -165,12 +221,6 @@ class Axis
 
 
 
-function initAxis()
-{
-    loadCSV();
-    parseData();
-}
-
 
 
 
@@ -246,56 +296,12 @@ function createInterpolation(axis, __data)
 
 }
 
-function parseData()
-{
-
-    for (let i = 0; i < data[0].length; i++)
-    {
-        tuple_data.push([]);
-        for( let j = 0 ; j < data.length; j++)
-        {
-            tuple_data[i].push(data[j][i]);
-        }
-    }
-
-    //assumption is here that first element represents the rest of the data set
-    //TODO: replace it with evaluation function
-    let number_of_axes = data[0].length;
-
-    for( let i = 0; i < number_of_axes; i++)
-    {
-        tmp = new Axis();
-        tmp.name = i + ".";
-        
-        //Set the interpolation function which calculates max and min of the data set
-        tmp.interpolation = createInterpolation(tmp, tuple_data[i]);
-        tmp.color = "#000000";
-        axes.push(tmp);
-        
-        //Map
-        order.push(i);
-
-    }
-        
-}
 
 function loadCSV()
 {
     
 }
 
-function generateLineSegment()
-{
-
-}
-
-function drawLineSegments(ctx)
-{
-    for()
-    {
-
-    }
-}
 
 function drawAxes(ctx)
 {
@@ -304,51 +310,6 @@ function drawAxes(ctx)
     //We draw 1 axis and the outgoing connections to the next axis
     for(let i = 0; i < axes.length; i++, x_pos+=distance)
     {
-        let axis_pos_1 = order[i];
-        let axis_pos_2 = order[i+1];
-        
-        let current_axis = axes[axis_pos_1];
-        let next_axis = axes[axis_pos_2];
-
-        //draw axis
-        ctx.beginPath();
-        ctx.moveTo(x_pos, ystart);
-        ctx.lineTo(x_pos, yend);
-        ctx.strokeStyle = current_axis.color;
-        ctx.stroke();
-        ctx.closePath();
-
-        //Render max_value,min_value and name of axis
-        //min
-        ctx.font = "30px Arial";
-        ctx.textBaseline = "bottom";
-        ctx.textAlign = "center";
-        ctx.fillText(String(current_axis.min_value), x_pos ,ystart);
-
-        //max
-        ctx.font = "30px Arial";
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText(String(current_axis.max_value), x_pos ,yend);
-
-        //Name
-        ctx.font = "40px Arial";
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText(current_axis.name, x_pos ,yend + 40);
-
-                
-        //Draw value in between
-        ctx.font = "20px Arial";
-        ctx.textBaseline = 0;
-        ctx.textAlign = 0;
-
-
-        for(let k = 0; k < data.length; k++)
-        {
-            const value_current_axis = data[k][axis_pos_1];
-            ctx.fillText(String(value_current_axis), x_pos ,ystart + (yend - ystart)/data.length * k );
-        }
 
         
         
@@ -358,36 +319,6 @@ function drawAxes(ctx)
 
         	//draw connections
 
-            for(let j = 0; j < data.length; j++)
-            {
-
-                	const value_current_axis = data[j][axis_pos_1];
-                	const value_next_axis = data[j][axis_pos_2];
-                	
-                	console.log(axis_pos_1);
-                	console.log(axis_pos_2);
-                	console.log(value_current_axis);
-                	console.log(value_next_axis);
-                	
-                	
-                	const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
-                	const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
-                	
-                	
-                	
-                	
-                	const y_current = current_axis_relative_pos * (yend - ystart) + ystart;
-                	const y_next = next_axis_relative_pos * (yend - ystart) + ystart;
-                	
-                	
-                	
-                	ctx.beginPath();
-                	ctx.moveTo(x_pos, y_current);
-                	ctx.lineTo(x_pos + distance, y_next);
-                	ctx.strokeStyle = "#000000";
-                	ctx.stroke();
-
-            }
              
             
           
