@@ -123,7 +123,21 @@ class ParallelCoordinates
                 const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
                 const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
                 
-               
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
 
                 
                 let line_segment = new LineSegment(x_pos, y_current,                //x1, y1
@@ -140,7 +154,7 @@ class ParallelCoordinates
         }
         
     }
-
+    
     render(ctx)
     {
 
@@ -176,6 +190,32 @@ class ParallelCoordinates
 
         }
         
+        
+    }
+    //selectData(int, int)
+    selectData(mouse_x, mouse_y)
+    {
+        //GetSegment
+
+        if(this.xstart > mouse_x || this.xend < mouse_x || this.ystart > mouse_y || this.yend < mouse_y)
+            return;
+
+        mouse_x -= this.xstart;
+        mouse_y -= this.ystart;
+
+        const segment = Math.floor(mouse_x / this.distance);
+
+        console.log("segment: "+segment);
+
+        if(segment >= this.number_of_axes - 1)return;
+        
+        const segment_lines = this.data_line_segments[segment];
+
+        //choose closest line
+        for(const line_segment of segment_lines)
+        {
+
+        }
         
     }
 
