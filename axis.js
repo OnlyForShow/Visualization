@@ -7,16 +7,16 @@ let width = 1000;
 let height = 500;
 let yend = ystart + height;
 
-let data = [[1,5,Math.exp(1),"Wow"],
-            [2,10,Math.exp(2),"Cool"],
-            [3,15,Math.exp(3),"Epic"],
-            [4,20,Math.exp(4),"Epic"],
-            [5,25,Math.exp(5),"Wow"],
-            [6,30,Math.exp(6),"Wow"],
-            [7,35,Math.exp(7),"Super"],
-            [8,40,Math.exp(8),"Zapper"],
-            [9,45,Math.exp(9),"Wow"],
-           ];
+let example_data = [[1,5,Math.exp(1),"Wow"],
+                    [2,10,Math.exp(2),"Cool"],
+                    [3,15,Math.exp(3),"Epic"],
+                    [4,20,Math.exp(4),"Epic"],
+                    [5,25,Math.exp(5),"Wow"],
+                    [6,30,Math.exp(6),"Wow"],
+                    [7,35,Math.exp(7),"Super"],
+                    [8,40,Math.exp(8),"Zapper"],
+                    [9,45,Math.exp(9),"Wow"],
+                   ];
 
 
 
@@ -35,6 +35,22 @@ class ParallelCoordinates
 
         this.x_pos = x;
         this.y_pos = y;
+
+        this.border_x = 50; //in px 
+        this.border_y = 50; //in px 
+
+        this.xstart = this.x_pos + this.border_x;
+        this.xend = this.width - this.border_x;
+
+        
+        this.ystart = this.y_pos + this.border_y;
+        this.yend = this.height - this.border_y;
+
+        this.number_of_axes = 0;
+        
+        this.distance =  0;
+
+       
     }
 
     parseData(data)
@@ -52,17 +68,27 @@ class ParallelCoordinates
     	
     	//assumption is here that first element represents the rest of the data set
     	//TODO: replace it with evaluation function
-    	let number_of_axes = this.data[0].length;
+    	this.number_of_axes = this.data[0].length;
+
+        //Determine distance
+        this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
+
 
         //Generate Axis
-    	for( let i = 0; i < number_of_axes; i++)
+    	for( let i = 0; i < this.number_of_axes; i++)
     	{
-    	    current_axis = new Axis();
-    	    current_axis.name = i + ".";
-    	    
-    	    //Set the interpolation function which calculates max and min of the data set
-    	    current_axis.interpolation = createInterpolation(current_axis, tuple_data[i]);
-    	    current_axis.color = "#000000";
+            //constructor(name, x1, y1, x2, y2, color, data_tuple)
+    	    let current_axis = new Axis(String(i + "."), //name
+                                        this.x_pos + this.border_x + this.distance * i,
+                                        this.y_pos + this.border_y,
+                                        this.x_pos + this.border_x + this.distance * (i + 1),
+                                        this.height - this.border_y,
+                                        "#000000",
+                                        tuple_data[i]
+                                       );
+            
+
+
     	    this.axes.push(current_axis);
     	    
     	    // Order position
@@ -71,36 +97,42 @@ class ParallelCoordinates
     	}
 
         //Generate LineSegments
-        for( let i = 0; i < number_of_axes - 1; i++)
+        for( let i = 0; i < this.number_of_axes - 1; i++)
         {
+            this.data_line_segments.push([]);
+            
+
+            let current_axis = this.axes[this.axes_order[i]];
+            let next_axis = this.axes[this.axes_order[i+1]];
+
+            const x_pos = current_axis.x1;
+            const x_pos_next = next_axis.x1;
+            
             for(let j = 0; j < data.length; j++)
             {
 
-                	const value_current_axis = data[j][axis_pos_1];
-                	const value_next_axis = data[j][axis_pos_2];
+                const value_current_axis = data[j][this.axes_order[i]];
+                const value_next_axis = data[j][this.axes_order[i+1]];
+
                 	
-                	console.log(axis_pos_1);
-                	console.log(axis_pos_2);
-                	console.log(value_current_axis);
-                	console.log(value_next_axis);
-                	
-                	
-                	const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
-                	const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
+                const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
+                const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
                 	
                 	
                 	
-                	
-                	const y_current = current_axis_relative_pos * (yend - ystart) + ystart;
-                	const y_next = next_axis_relative_pos * (yend - ystart) + ystart;
-                	
-                	
-                	
-                	ctx.beginPath();
-                	ctx.moveTo(x_pos, y_current);
-                	ctx.lineTo(x_pos + distance, y_next);
-                	ctx.strokeStyle = "#000000";
-                	ctx.stroke();
+                const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                
+               
+
+                
+                let line_segment = new LineSegment(x_pos, y_current,                //x1, y1
+                                                   x_pos_next, y_next,              //x2, y2
+                                                   "#000000",                       //color                              
+                                                   data[j]                          //tuple-reference
+                                                  );
+                
+                this.data_line_segments[i].push(line_segment); 
 
             
 
@@ -112,20 +144,41 @@ class ParallelCoordinates
     render(ctx)
     {
 
+        //set background
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(this.x_pos, this.y_pos, this.width, this.height);
+
+        ctx.fillStyle = "#000000";
+        
+        //render axes
+        for(let it = 0; it < this.number_of_axes; it++)
+        {
+            let current_axis = this.axes[this.axes_order[it]];
+
+            current_axis.render(ctx);
+        }
+
+        //render LineSegment
+        for(const arr of this.data_line_segments)
+        {
+            for(const line_segment of arr)
+            {
+                
+                ctx.fillStyle = "#000000";
+                ctx.beginPath();
+                ctx.moveTo(line_segment.x1, line_segment.y1);
+                ctx.lineTo(line_segment.x2, line_segment.y2);
+                ctx.strokeStyle = line_segment.color;
+                ctx.stroke();
+                ctx.closePath();
+
+            }
+
+        }
+        
+        
     }
 
-    renderAxis(ctx)
-    {
-
-    }
-
-    renderSegments(ctx)
-    {
-            
-    
-
-    
-    }
 
 }
 
@@ -145,9 +198,13 @@ class LineSegment
     }
 }
 
+const max_number_of_inbetween_values_of_axis = 10;
+
 class Axis
 {
-    constructor(name, x1, y1, x2, y2, data_tuple)
+    
+    
+    constructor(name, x1, y1, x2, y2, color, data_tuple)
     {
         //Name that will be used for referencing the axis
         this.name = name;
@@ -157,6 +214,15 @@ class Axis
         this.y1 = y1;
         this.x2 = x2;
         this.y2 = y2;
+
+
+        // this data field will be either a ReferenceMap or a number
+        this.category = "";
+        this.data = null;
+
+        this.max_value = null;
+        this.min_value = null;
+
         
         //a lambda function that returns a real number between 0 and 1
         //depending on the parameter
@@ -168,24 +234,103 @@ class Axis
         //         pos = 0.038137
         //Example: let pos = axis.interpolation("Green");
         //         pos = 0.5
-        this.interpolation = null;
+        this.interpolation = this.createInterpolation(data_tuple);
 
-        this.max_value = null;
-        this.min_value = null;
 
-        this.data = null;
+       
+
         
         //Display-Color
-        this.color = null;
+        this.color = color;
     }
+
+
+    //let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
+    // table[0] => [1,2,3]
+    // table[1] => [5,10,15]
+    // table[2] => [2.71,...]
+    // table[3] => ["Wow",...]
+    createInterpolation(data)
+    {
+        if ( data.length === 0)
+        {
+            throw new Error("createInterpolation: Data must not be empty");
+        }
+        
+        let MIN_VALUE = Infinity;
+        let MAX_VALUE = -Infinity;
+        
+        //Check whether data is numerical or categorical
+        //isFinite() checks whether it is number
+        //Make the assumption that the first element type is representative of every element in the tuple
+        if(Number.isFinite(data[0]))
+        {
+            //If numerical then get the maximum and minimum data element
+            for(const elem of data)
+            {
+                if ( elem < MIN_VALUE ) MIN_VALUE = elem;
+                if ( elem > MAX_VALUE ) MAX_VALUE = elem;
+            }
+
+            this.min_value = MIN_VALUE;
+            this.max_value = MAX_VALUE;
+
+            this.category = "Number";
+            this.data = 0;
+            
+            return (x) => {
+                
+                return (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
+            };
+            
+        }else
+        {
+    	    //If categorial then put the data into map datastructure
+    	    //Get the total number of elements and save the order
+
+            let ReferenceMap = new Map();
+
+            //Categorical data get a ReferenceMap
+            this.category = "ReferenceMap";
+            this.data = ReferenceMap;
+            
+            let index = 0;
+
+            let first_element = data[0];
+            let last_element = null;
+            
+            for(const elem of data)
+            {
+                console.log("DATA: "+data);
+                console.log("elem: "+elem);
+                if(ReferenceMap.has(elem)) continue;
+                ReferenceMap.set(elem, index++);
+                last_element = elem;
+            }
+
+            MIN_VALUE = 0;
+            MAX_VALUE = ReferenceMap.size - 1;
+
+            this.min_value = first_element;
+            this.max_value = last_element;
+
+            this.data = ReferenceMap;
+            
+            return (x) => {
+                return (ReferenceMap.get(x)/MAX_VALUE);
+            };
+        }
+
+    }
+
 
     render(ctx)
     {
-                //draw axis
+        //draw axis
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x1, y2);
-        ctx.strokeStyle = current_axis.color;
+        ctx.moveTo(this.x1, this.y1);
+        ctx.lineTo(this.x1, this.y2);
+        ctx.strokeStyle = this.color;
         ctx.stroke();
         ctx.closePath();
 
@@ -194,135 +339,69 @@ class Axis
         ctx.font = "30px Arial";
         ctx.textBaseline = "bottom";
         ctx.textAlign = "center";
-        ctx.fillText(String(current_axis.min_value), x1 ,y1);
+        ctx.fillText(String(this.min_value), this.x1 ,this.y1);
 
         //max
         ctx.font = "30px Arial";
         ctx.textBaseline = "top";
         ctx.textAlign = "center";
-        ctx.fillText(String(current_axis.max_value), x1 ,y2 );
+        ctx.fillText(String(this.max_value), this.x1 ,this.y2 );
 
         //Name
         ctx.font = "40px Arial";
         ctx.textBaseline = "top";
         ctx.textAlign = "center";
-        ctx.fillText(current_axis.name, x1 ,y2 + 40);
+        ctx.fillText(this.name, this.x1 ,this.y2 + 40);
 
                 
-        //Draw value in between
-        ctx.font = "20px Arial";
-        ctx.textBaseline = 0;
-        ctx.textAlign = 0;
+        //Draw value in between 
+        ctx.font = "10px Arial";
+        ctx.textBaseline = "";
+        ctx.textAlign = "";
 
 
-    }
-    
-};
-
-
-
-
-
-
-//let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
-// Data[0] => [1,2,3]
-// Data[1] => [5,10,15]
-// Data[2] => [2.71,...]
-// Data[3] => ["Wow",
-function createInterpolation(axis, __data)
-{
-    if ( __data.length === 0)
-    {
-        throw new Error("createInterpolation: Data must not be empty");
-    }
-    
-    let MIN_VALUE = Infinity;
-    let MAX_VALUE = -Infinity;
+        let counter = 0;
+        let distance = 0;
         
-    //Check whether data is numerical or categorical
-    //isFinite() checks whether it is number
-    //Make the assumption that the first element type is representative of every element in the tuple
-    if(Number.isFinite(__data[0]))
-    {
-        //If numerical then get the maximum and minimum data element
-        for(const elem of __data)
+        if(this.category == "ReferenceMap")
         {
-            if ( elem < MIN_VALUE ) MIN_VALUE = elem;
-            if ( elem > MAX_VALUE ) MAX_VALUE = elem;
-        }
+            distance = (this.y2 - this.y1)/(this.data.size-1);
 
-        axis.min_value = MIN_VALUE.toFixed(2);
-        axis.max_value = MAX_VALUE.toFixed(2);
-        
-        return (x) => {
+            for(const elem of this.data.keys())
+            {
+                ctx.fillText(elem, this.x1, this.y1 + distance * counter);
+                counter++;               
+            }
             
-            console.log("Numerical  x: "+x+" (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE): " + (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE));
-            console.log("MAX_VALUE: "+MAX_VALUE+"   MIN_VALUE: "+MIN_VALUE);
-            return (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
-        };
-        
-    }else
-    {
-    	//If categorial then put the data into map datastructure
-    	//Get the total number of elements and save the order
-
-        let ReferenceMap = new Map();
-        let index = 0;
-
-        let first_element = __data[0];
-        let last_element = null;
-        
-        for(const elem of __data)
+        }else if(this.category == "Number")
         {
-            console.log("DATA: "+__data);
-            console.log("elem: "+elem);
-            if(ReferenceMap.has(elem)) continue;
-            ReferenceMap.set(elem, index++);
-            last_element = elem;
+            distance = (this.y2 - this.y1)/(max_number_of_inbetween_values_of_axis-1);
+            const d_value = (this.max_value - this.min_value)/(max_number_of_inbetween_values_of_axis-1);
+
+
+
+
+            for(let elem = this.min_value; elem < this.max_value; elem+=d_value)
+            {
+            
+                ctx.fillText(String(elem.toFixed(2)), this.x1, this.y1 + distance * counter);
+                counter++;
+            }
         }
+            
 
-        MIN_VALUE = 0;
-        MAX_VALUE = ReferenceMap.size - 1;
-
-        axis.min_value = first_element;
-        axis.max_value = last_element;
-        
-        return (x) => {
-            console.log("Categorical  x: "+x+" (ReferenceMap.get(x)/MAX_VALUE): " + (ReferenceMap.get(x)/MAX_VALUE));
-            console.log("MAX_VALUE: "+MAX_VALUE+"   ReferenceMap.get(x): "+ReferenceMap.get(x));            
-            return (ReferenceMap.get(x)/MAX_VALUE);
-        };
     }
-
+    
 }
+
+
+
+
+
+
 
 
 function loadCSV()
 {
     
-}
-
-
-function drawAxes(ctx)
-{
-    let x_pos = xstart;
-    let distance = width/axes.length;
-    //We draw 1 axis and the outgoing connections to the next axis
-    for(let i = 0; i < axes.length; i++, x_pos+=distance)
-    {
-
-        
-        
-        
-        if(i < axes.length - 1)
-        {
-
-        	//draw connections
-
-             
-            
-          
-        }
-        
-    }
 }

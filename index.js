@@ -6,7 +6,7 @@ let canvas;
 let ctx;
 let down_state = false;
 
-
+let parallelCoordinates_visual;
 
 
 function init() {
@@ -29,7 +29,8 @@ function init() {
     resize();
     window.addEventListener('resize', resize);
 
-    initAxis();
+    parallelCoordinates_visual = new ParallelCoordinates(200,200,1400,900);
+    parallelCoordinates_visual.parseData(example_data);
     
     window.requestAnimationFrame(draw);
 }
@@ -63,6 +64,7 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 
-    drawAxes(ctx);
+
+    parallelCoordinates_visual.render(ctx);
 
 }
