@@ -334,30 +334,30 @@ class Axis
         ctx.stroke();
         ctx.closePath();
 
-        //Render max_value,min_value and name of axis
-        //min
-        ctx.font = "30px Arial";
-        ctx.textBaseline = "bottom";
-        ctx.textAlign = "center";
-        ctx.fillText(String(this.min_value), this.x1 ,this.y1);
+        ////Render max_value,min_value and name of axis
+        ////min
+        //ctx.font = "30px Arial";
+        //ctx.textBaseline = "bottom";
+        //ctx.textAlign = "center";
+        //ctx.fillText(String(this.min_value), this.x1 ,this.y1);
 
-        //max
-        ctx.font = "30px Arial";
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText(String(this.max_value), this.x1 ,this.y2 );
-
-        //Name
-        ctx.font = "40px Arial";
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x1 ,this.y2 + 40);
+        ////max
+        //ctx.font = "30px Arial";
+        //ctx.textBaseline = "top";
+        //ctx.textAlign = "center";
+        //ctx.fillText(String(this.max_value), this.x1 ,this.y2 );
+        //
+        ////Name
+        //ctx.font = "40px Arial";
+        //ctx.textBaseline = "top";
+        //ctx.textAlign = "center";
+        //ctx.fillText(this.name, this.x1 ,this.y2 + 40);
 
                 
         //Draw value in between 
-        ctx.font = "10px Arial";
-        ctx.textBaseline = "";
-        ctx.textAlign = "";
+        ctx.font = "14px Arial";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center ";
 
 
         let counter = 0;
@@ -380,12 +380,12 @@ class Axis
 
 
 
-
-            for(let elem = this.min_value; elem < this.max_value; elem+=d_value)
+            let elem = this.min_value;
+            for(let counter = 0; counter < max_number_of_inbetween_values_of_axis; counter++)
             {
             
-                ctx.fillText(String(elem.toFixed(2)), this.x1, this.y1 + distance * counter);
-                counter++;
+                ctx.fillText(elem.toFixed(2), this.x1, this.y1 + distance * counter);
+                elem+=d_value
             }
         }
             
