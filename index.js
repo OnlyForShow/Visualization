@@ -44,17 +44,14 @@ function resize() {
 }
 
 function move(evt) {
-    //if (!down_state) return;
-    //
-    //ctx.beginPath();
-    //ctx.arc(evt.x * window.devicePixelRatio, evt.y*window.devicePixelRatio, 4, 0, Math.PI * 2);
-    //ctx.arc(evt.x, evt.y, 4, 0, Math.PI * 2);
-    //ctx.fill();
+
+    parallelCoordinates_visual.selectData(evt.x, evt.y);
+    
 }
 
 function down(evt) {
     down_state = true;
-}
+ }
 
 function up(evt) {
     down_state = false;

@@ -50,6 +50,10 @@ class ParallelCoordinates
         
         this.distance =  0;
 
+        this.selectedLine = -1;
+
+        // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
+        this.lines_of_tuple = []
        
     }
 
@@ -70,6 +74,12 @@ class ParallelCoordinates
     	//TODO: replace it with evaluation function
     	this.number_of_axes = this.data[0].length;
 
+        
+        for(let it = 0; it < this.data.length; it++)
+        {
+            this.lines_of_tuple.push([]);
+        }
+            
         //Determine distance
         this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
 
@@ -123,32 +133,17 @@ class ParallelCoordinates
                 const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
                 const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
                 
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-         
-
                 
                 let line_segment = new LineSegment(x_pos, y_current,                //x1, y1
                                                    x_pos_next, y_next,              //x2, y2
-                                                   "#000000",                       //color                              
-                                                   data[j]                          //tuple-reference
+                                                   "#000000",                       //color
+                                                   j                                //tuple-reference
+                                                   
                                                   );
                 
                 this.data_line_segments[i].push(line_segment); 
 
-            
+                this.lines_of_tuple[j].push(this.data_line_segments[i][this.data_line_segments[i].length - 1]);
 
             }
         }
@@ -164,13 +159,7 @@ class ParallelCoordinates
 
         ctx.fillStyle = "#000000";
         
-        //render axes
-        for(let it = 0; it < this.number_of_axes; it++)
-        {
-            let current_axis = this.axes[this.axes_order[it]];
 
-            current_axis.render(ctx);
-        }
 
         //render LineSegment
         for(const arr of this.data_line_segments)
@@ -189,8 +178,33 @@ class ParallelCoordinates
             }
 
         }
+
+        //render selected axis
+
+        if(this.selectLine != -1)
+        {
+            const lines = this.lines_of_tuple[this.selectLine];
+
+            for(const line_segment of lines)
+            {
+                ctx.fillStyle = "#FF0000";
+                ctx.beginPath();
+                ctx.moveTo(line_segment.x1, line_segment.y1);
+                ctx.lineTo(line_segment.x2, line_segment.y2);
+                ctx.strokeStyle = line_segment.color;
+                ctx.stroke();
+                ctx.closePath();
+
+            }
+        } 
         
-        
+        //render axes
+        for(let it = 0; it < this.number_of_axes; it++)
+        {
+            let current_axis = this.axes[this.axes_order[it]];
+
+            current_axis.render(ctx);
+        }
     }
     //selectData(int, int)
     selectData(mouse_x, mouse_y)
@@ -198,12 +212,14 @@ class ParallelCoordinates
         //GetSegment
 
         if(this.xstart > mouse_x || this.xend < mouse_x || this.ystart > mouse_y || this.yend < mouse_y)
+        {
+            this.selectTuple = -1;
             return;
+        }
+        const p_x = mouse_x - this.xstart;
+        const p_y = mouse_y - this.ystart;
 
-        mouse_x -= this.xstart;
-        mouse_y -= this.ystart;
-
-        const segment = Math.floor(mouse_x / this.distance);
+        const segment = Math.floor(p_x / this.distance);
 
         console.log("segment: "+segment);
 
@@ -211,11 +227,25 @@ class ParallelCoordinates
         
         const segment_lines = this.data_line_segments[segment];
 
+        let d_min = Infinity;
+        let min_line_segment = null;
         //choose closest line
         for(const line_segment of segment_lines)
         {
+            let d = ((mouse_x - line_segment.x1)*(line_segment.y2 - line_segment.y1) -
+                     (line_segment.x2 - line_segment.x1) * (mouse_y - line_segment.y1))
+                /((line_segment.x2 - line_segment.x1)**2 * (line_segment.y2 - line_segment.y1)**2);
 
+            if(d < d_min)
+            {
+                d_min = d;
+                min_line_segment = line_segment;
+            }
         }
+
+        if(min_line_segment != null)
+            this.selectedLine = min_line_segment.tuple;
+        
         
     }
 
@@ -232,9 +262,8 @@ class LineSegment
         this.y1 = y1;
         this.x2 = x2;
         this.y2 = y2;
-        this.tuple = tuple; // reference of the data tuple
+        this.tuple = tuple; // index of the data tuple
         this.color = color; // String
-        
     }
 }
 
