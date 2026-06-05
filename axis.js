@@ -1,11 +1,4 @@
 
-let xstart = 500;
-let ystart = 100;
-
-
-let width = 1000;
-let height = 500;
-let yend = ystart + height;
 
 let example_data = [[1,5,Math.exp(1),"Wow"],
                     [2,10,Math.exp(2),"Cool"],
@@ -77,9 +70,11 @@ class ParallelCoordinates
         
         for(let it = 0; it < this.data.length; it++)
         {
-            this.lines_of_tuple.push([]);
+            this.lines_of_tuple.push(new Array());
         }
-            
+
+
+        
         //Determine distance
         this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
 
@@ -147,6 +142,8 @@ class ParallelCoordinates
 
             }
         }
+
+    
         
     }
     
@@ -154,7 +151,7 @@ class ParallelCoordinates
     {
 
         //set background
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = "#AAAAAA";
         ctx.fillRect(this.x_pos, this.y_pos, this.width, this.height);
 
         ctx.fillStyle = "#000000";
@@ -181,23 +178,25 @@ class ParallelCoordinates
 
         //render selected axis
 
-        if(this.selectLine != -1)
+        console.log("this.selectedLine : "+this.selectedLine);
+        if(this.selectedLine != -1)
         {
-            const lines = this.lines_of_tuple[this.selectLine];
+            const lines = this.lines_of_tuple[this.selectedLine];
 
+            console.log("this.selectedLine: " +this.selectedLine +"  lines: "+this.lines_of_tuple[this.selectedLine]);
+            
             for(const line_segment of lines)
             {
-                ctx.fillStyle = "#FF0000";
+
                 ctx.beginPath();
                 ctx.moveTo(line_segment.x1, line_segment.y1);
                 ctx.lineTo(line_segment.x2, line_segment.y2);
-                ctx.strokeStyle = line_segment.color;
+                ctx.strokeStyle = "red";
                 ctx.stroke();
                 ctx.closePath();
 
             }
         } 
-        
         //render axes
         for(let it = 0; it < this.number_of_axes; it++)
         {
@@ -211,17 +210,13 @@ class ParallelCoordinates
     {
         //GetSegment
 
-        if(this.xstart > mouse_x || this.xend < mouse_x || this.ystart > mouse_y || this.yend < mouse_y)
-        {
-            this.selectTuple = -1;
-            return;
-        }
+        
         const p_x = mouse_x - this.xstart;
         const p_y = mouse_y - this.ystart;
 
         const segment = Math.floor(p_x / this.distance);
 
-        console.log("segment: "+segment);
+
 
         if(segment >= this.number_of_axes - 1)return;
         
@@ -230,11 +225,18 @@ class ParallelCoordinates
         let d_min = Infinity;
         let min_line_segment = null;
         //choose closest line
-        for(const line_segment of segment_lines)
+        for(let line_segment of segment_lines)
         {
-            let d = ((mouse_x - line_segment.x1)*(line_segment.y2 - line_segment.y1) -
-                     (line_segment.x2 - line_segment.x1) * (mouse_y - line_segment.y1))
-                /((line_segment.x2 - line_segment.x1)**2 * (line_segment.y2 - line_segment.y1)**2);
+
+            let nenner = ((line_segment.x2 - line_segment.x1)**2 + (line_segment.y2 - line_segment.y1)**2);
+            
+            let d = Math.abs((line_segment.y2 - line_segment.y1)*mouse_x -
+                             (line_segment.x2 - line_segment.x1)*mouse_y +
+                             (line_segment.x2 * line_segment.y1) -
+                             (line_segment.y2 * line_segment.x1));
+
+            d /= nenner;
+
 
             if(d < d_min)
             {
@@ -243,9 +245,11 @@ class ParallelCoordinates
             }
         }
 
+        
         if(min_line_segment != null)
             this.selectedLine = min_line_segment.tuple;
-        
+
+
         
     }
 
@@ -370,8 +374,6 @@ class Axis
             
             for(const elem of data)
             {
-                console.log("DATA: "+data);
-                console.log("elem: "+elem);
                 if(ReferenceMap.has(elem)) continue;
                 ReferenceMap.set(elem, index++);
                 last_element = elem;

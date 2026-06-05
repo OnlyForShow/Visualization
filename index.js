@@ -11,6 +11,7 @@ let parallelCoordinates_visual;
 
 function init() {
     canvas = document.createElement('canvas');
+
     canvas.style.margin = 0;
     canvas.style.backgroundColor = '#FAFAFA';
 
@@ -45,8 +46,9 @@ function resize() {
 
 function move(evt) {
 
+
     parallelCoordinates_visual.selectData(evt.x, evt.y);
-    
+    window.requestAnimationFrame(draw);
 }
 
 function down(evt) {
