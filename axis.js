@@ -50,6 +50,11 @@ class ParallelCoordinates
        
     }
 
+    parseCSV(CSV_file)
+    {
+        
+    }
+    
     parseData(data)
     {
         this.data = data;

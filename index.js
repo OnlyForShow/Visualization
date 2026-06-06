@@ -46,8 +46,9 @@ function resize() {
 
 function move(evt) {
 
+    const rect = canvas.getBoundingClientRect();
 
-    parallelCoordinates_visual.selectData(evt.x, evt.y);
+    parallelCoordinates_visual.selectData(evt.x - rect.x, evt.y - rect.y);
     window.requestAnimationFrame(draw);
 }
 
@@ -62,7 +63,7 @@ function up(evt) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-
+    
 
     parallelCoordinates_visual.render(ctx);
 
