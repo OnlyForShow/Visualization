@@ -1,4 +1,4 @@
-
+    
 
 let example_data = [[1,5,Math.exp(1),"Wow"],
                     [2,10,Math.exp(2),"Cool"],
@@ -47,18 +47,47 @@ class ParallelCoordinates
 
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
-       
+        
+    }
+
+    reset_visualization()
+    {
+        this.axes = []; // Axis []
+        this.axes_order = []; // int []
+
+        this.data_line_segments = []; // LineSegment [][]
+        
+
+        this.number_of_axes = 0;
+        
+        this.distance =  0;
+
+        this.selectedLine = -1;
+
+        // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
+        this.lines_of_tuple = []
+
     }
 
     parseCSV(CSV_file)
     {
-        
+        Papa.parse(CSV_file, {
+            header : false,
+            skipEmptyLines : true,
+            complete : (results) =>
+            {
+                this.parseData(results.data);
+            }
+        });
     }
     
     parseData(data)
     {
+        this.reset_visualization();
+        
         this.data = data;
         let tuple_data = []
+        console.log(data);
         for (let i = 0; i < this.data[0].length; i++)
     	{
     	    tuple_data.push([]);
@@ -183,12 +212,12 @@ class ParallelCoordinates
 
         //render selected axis
 
-        console.log("this.selectedLine : "+this.selectedLine);
+
         if(this.selectedLine != -1)
         {
             const lines = this.lines_of_tuple[this.selectedLine];
 
-            console.log("this.selectedLine: " +this.selectedLine +"  lines: "+this.lines_of_tuple[this.selectedLine]);
+
             
             for(const line_segment of lines)
             {
@@ -223,7 +252,7 @@ class ParallelCoordinates
 
 
 
-        if(segment >= this.number_of_axes - 1)return;
+        if(segment >= this.number_of_axes - 1 || segment < 0)return;
         
         const segment_lines = this.data_line_segments[segment];
 
@@ -334,6 +363,8 @@ class Axis
         {
             throw new Error("createInterpolation: Data must not be empty");
         }
+
+        
         
         let MIN_VALUE = Infinity;
         let MAX_VALUE = -Infinity;
@@ -341,13 +372,13 @@ class Axis
         //Check whether data is numerical or categorical
         //isFinite() checks whether it is number
         //Make the assumption that the first element type is representative of every element in the tuple
-        if(Number.isFinite(data[0]))
+        if(Number(data[0]) != NaN && Number.isFinite(Number(data[0])))
         {
             //If numerical then get the maximum and minimum data element
             for(const elem of data)
             {
-                if ( elem < MIN_VALUE ) MIN_VALUE = elem;
-                if ( elem > MAX_VALUE ) MAX_VALUE = elem;
+                if ( elem < MIN_VALUE ) MIN_VALUE = Number(elem);
+                if ( elem > MAX_VALUE ) MAX_VALUE = Number(elem);
             }
 
             this.min_value = MIN_VALUE;
@@ -457,7 +488,7 @@ class Axis
 
 
             let elem = this.min_value;
-            for(let counter = 0; counter < max_number_of_inbetween_values_of_axis; counter++)
+            for(let counter = 0; counter < 10; counter++)
             {
             
                 ctx.fillText(elem.toFixed(2), this.x1, this.y1 + distance * counter);

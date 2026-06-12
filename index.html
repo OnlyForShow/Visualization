@@ -3,28 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Parallele Koordinaten</title>
-  
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src = "axis.js"></script>
   <script src = "index.js"></script>
 </head>
 
 <body>
-  <input type="file" id="csvFile" accept=".csv" />
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script>
-    document.getElementById("csvFile").addEventListener("change", (event) => {
-
-    const file = event.target.files[0];
-    if(!file) return;
-
-    Papa.parse(file, {
-        header : false,
-        skipEmptyLines : true,
-        complete : function(results){
-            console.log(results.data);
-        }
-    });
-    });
-</script>
+  
 </body>
 </html>

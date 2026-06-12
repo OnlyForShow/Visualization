@@ -1,7 +1,7 @@
 
 document.addEventListener('DOMContentLoaded', init);
 
-
+let CSVInput;
 let canvas;
 let ctx;
 let down_state = false;
@@ -19,8 +19,13 @@ function init() {
     canvas.addEventListener('pointerdown', down)
     canvas.addEventListener('pointerup', up)
 
+    CSVInput = document.createElement("input");
+    CSVInput.addEventListener("change", loadAndProcessCSV);
+    CSVInput.type = "file";
 
+    
     let body = document.getElementsByTagName('body')[0];
+    body.appendChild(CSVInput);
     body.appendChild(canvas);
     body.style.margin = 0;
     body.style.overflow = 'hidden';
@@ -67,4 +72,13 @@ function draw() {
 
     parallelCoordinates_visual.render(ctx);
 
+}
+
+function loadAndProcessCSV(evt)
+{
+    const file = evt.target.files[0];
+    if(!file) return;
+
+    parallelCoordinates_visual.parseCSV(file);
+    window.requestAnimationFrame(draw);
 }
