@@ -2,15 +2,21 @@
 document.addEventListener('DOMContentLoaded', init);
 
 let CSVInput;
-let canvas;
-let ctx;
-let down_state = false;
+let canvas_background_1;
+let canvas_axis_2;
+let canvas_lineSegment_3;
+let canvas_selectedLine_4;
+let ctx_background_1;
+let ctx_axis_2;
+let ctx_lineSegment_3;
+let ctx_selectedLine_4;
+
 
 let parallelCoordinates_visual;
 
 
 function init() {
-    canvas = document.createElement('canvas');
+    canvas_background_1 = document.createElement('canvas');
 
     canvas.style.margin = 0;
     canvas.style.backgroundColor = '#FAFAFA';
