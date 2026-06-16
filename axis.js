@@ -1,6 +1,7 @@
     
 
-let example_data = [[1,5,Math.exp(1),"Wow"],
+let example_data = [["id","id*5","e^id","Comment"],
+                    [1,5,Math.exp(1),"Wow"],
                     [2,10,Math.exp(2),"Cool"],
                     [3,15,Math.exp(3),"Epic"],
                     [4,20,Math.exp(4),"Epic"],
@@ -29,15 +30,15 @@ class ParallelCoordinates
         this.x_pos = x;
         this.y_pos = y;
 
-        this.border_x = 50; //in px 
-        this.border_y = 50; //in px 
+        this.border_x = 200; //in px 
+        this.border_y = 200; //in px 
 
         this.xstart = this.x_pos + this.border_x;
         this.xend = this.width - this.border_x;
 
         
         this.ystart = this.y_pos + this.border_y;
-        this.yend = this.height - this.border_y;
+        this.yend = this.y_pos + this.height - this.border_y;
 
         this.number_of_axes = 0;
         
@@ -90,11 +91,11 @@ class ParallelCoordinates
         this.container.style = 'relative';
         
         const canvas_list = [this.backgroundCanvas0,
-                       this.axisCanvas1,
-                       this.linesegmentCanvas2,
-                       this.selectedlineCanvas3,
-                       this.zoomCanvas4
-                      ];
+                             this.linesegmentCanvas2,
+                             this.axisCanvas1,
+                             this.selectedlineCanvas3,
+                             this.zoomCanvas4
+                            ];
 
         for(let it = 0; it < canvas_list.length; it++)
         {
@@ -129,6 +130,12 @@ class ParallelCoordinates
             canvas.style.height = window.innerHeight + 'px';
         }
 
+        this.background_redraw = true;
+        this.axis_redraw = true;
+        this.linesegment_redraw = true;
+        this.selectedline_redraw = true;
+        this.zoom_redraw = true; 
+        
     }
     
     resetVisualization()
@@ -148,6 +155,12 @@ class ParallelCoordinates
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
 
+        this.background_redraw = true;
+        this.axis_redraw = true;
+        this.linesegment_redraw = true;
+        this.selectedline_redraw = true;
+        this.zoom_redraw = true; 
+
     }
 
     parseCSV(CSV_file)
@@ -155,13 +168,17 @@ class ParallelCoordinates
         Papa.parse(CSV_file, {
             header : false,
             skipEmptyLines : true,
+            worker : true,
             complete : (results) =>
             {
                 this.parseData(results.data);
             }
         });
     }
-    
+
+
+
+    // data[0][i] are the header values
     parseData(data)
     {
         this.resetVisualization();
@@ -172,7 +189,7 @@ class ParallelCoordinates
         for (let i = 0; i < this.data[0].length; i++)
     	{
     	    tuple_data.push([]);
-    	    for( let j = 0 ; j < data.length; j++)
+    	    for( let j = 1 ; j < data.length; j++)
     	    {
     	        tuple_data[i].push(this.data[j][i]);
     	    }
@@ -198,11 +215,11 @@ class ParallelCoordinates
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
             //constructor(name, x1, y1, x2, y2, color, data_tuple)
-    	    let current_axis = new Axis(String(i + "."), //name
+    	    let current_axis = new Axis(data[0][i], //name
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.border_y,
-                                        this.x_pos + this.border_x + this.distance * (i + 1),
-                                        this.height - this.border_y,
+                                        this.x_pos + this.border_x + this.distance * i,
+                                        this.y_pos + this.height - this.border_y,
                                         "#000000",
                                         tuple_data[i]
                                        );
@@ -228,7 +245,7 @@ class ParallelCoordinates
             const x_pos = current_axis.x1;
             const x_pos_next = next_axis.x1;
             
-            for(let j = 0; j < data.length; j++)
+            for(let j = 1; j < data.length; j++)
             {
 
                 const value_current_axis = data[j][this.axes_order[i]];
@@ -273,54 +290,77 @@ class ParallelCoordinates
 
        
         
-
-        this.linesegmentCtx2.clearRect(0, 0, this.linesegmentCanvas2.width, this.linesegmentCanvas2.height);
-        //render LineSegment
-        for(const arr of this.data_line_segments)
+        if(this.linesegment_redraw)
         {
-            for(const line_segment of arr)
+            this.line_segment = false;
+            
+            this.linesegmentCtx2.clearRect(0, 0, this.linesegmentCanvas2.width, this.linesegmentCanvas2.height);
+            //render LineSegment
+            for(const arr of this.data_line_segments)
             {
+                for(const line_segment of arr)
+                {
+                    
+                    this.linesegmentCtx2.fillStyle = "#000000";
+                    this.linesegmentCtx2.beginPath();
+                    this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
+                    this.linesegmentCtx2.lineTo(line_segment.x2, line_segment.y2);
+                    this.linesegmentCtx2.strokeStyle = line_segment.color;
+                    this.linesegmentCtx2.stroke();
+                    this.linesegmentCtx2.closePath();
+                    
+                }
+
+            }
+        }
+        //render selected line and message box that displays tuple
+
+        if(this.selectedline_redraw)
+        {
+            this.selectedline_redraw = false;
+            
+            this.selectedlineCtx3.clearRect(0, 0, this.selectedlineCanvas3.width, this.selectedlineCanvas3.height);
+            if(this.selectedLine != -1)
+            {
+                const lines = this.lines_of_tuple[this.selectedLine];
+
                 
-                this.linesegmentCtx2.fillStyle = "#000000";
-                this.linesegmentCtx2.beginPath();
-                this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
-                this.linesegmentCtx2.lineTo(line_segment.x2, line_segment.y2);
-                this.linesegmentCtx2.strokeStyle = line_segment.color;
-                this.linesegmentCtx2.stroke();
-                this.linesegmentCtx2.closePath();
-                
+                for(const line_segment of lines)
+                {
+
+                    this.selectedlineCtx3.beginPath();
+                    this.selectedlineCtx3.moveTo(line_segment.x1, line_segment.y1);
+                    this.selectedlineCtx3.lineTo(line_segment.x2, line_segment.y2);
+                    this.selectedlineCtx3.strokeStyle = "red";
+                    this.selectedlineCtx3.stroke();
+                    this.selectedlineCtx3.closePath();
+                    
+                }
+
+                this.selectedlineCtx3.font = "40px Arial";
+                this.selectedlineCtx3.fillStyle = "black";
+                this.selectedlineCtx3.textBaseline = "top";
+                const tuple_display = this.data[this.selectedLine];
+                this.selectedlineCtx3.fillText(`(${tuple_display.join(", ")})`, this.x_pos, this.y_pos);
             }
 
-        }
 
-        //render selected line
-
-        this.selectedlineCtx3.clearRect(0, 0, this.selectedlineCanvas3.width, this.selectedlineCanvas3.height);
-        if(this.selectedLine != -1)
-        {
-            const lines = this.lines_of_tuple[this.selectedLine];
 
             
-            for(const line_segment of lines)
-            {
-
-                this.selectedlineCtx3.beginPath();
-                this.selectedlineCtx3.moveTo(line_segment.x1, line_segment.y1);
-                this.selectedlineCtx3.lineTo(line_segment.x2, line_segment.y2);
-                this.selectedlineCtx3.strokeStyle = "red";
-                this.selectedlineCtx3.stroke();
-                this.selectedlineCtx3.closePath();
-                
-            }
         }
 
-        this.axisCtx1.clearRect(0, 0, this.axisCanvas1.width, this.axisCanvas1.height);
-        //render axes
-        for(let it = 0; it < this.number_of_axes; it++)
+        if(this.axis_redraw)
         {
-            let current_axis = this.axes[this.axes_order[it]];
+            this.axis_redraw = false;
+            
+            this.axisCtx1.clearRect(0, 0, this.axisCanvas1.width, this.axisCanvas1.height);
+            //render axes
+            for(let it = 0; it < this.number_of_axes; it++)
+            {
+                let current_axis = this.axes[this.axes_order[it]];
 
-            current_axis.render(this.axisCtx1);
+                current_axis.render(this.axisCtx1);
+            }
         }
     }
     //selectData(int, int)
@@ -328,6 +368,7 @@ class ParallelCoordinates
     {
         //GetSegment
 
+        this.selectedline_redraw = true;
         
         const p_x = mouse_x - this.xstart;
         const p_y = mouse_y - this.ystart;
@@ -525,28 +566,16 @@ class Axis
         ctx.stroke();
         ctx.closePath();
 
-        ////Render max_value,min_value and name of axis
-        ////min
-        //ctx.font = "30px Arial";
-        //ctx.textBaseline = "bottom";
-        //ctx.textAlign = "center";
-        //ctx.fillText(String(this.min_value), this.x1 ,this.y1);
-
-        ////max
-        //ctx.font = "30px Arial";
-        //ctx.textBaseline = "top";
-        //ctx.textAlign = "center";
-        //ctx.fillText(String(this.max_value), this.x1 ,this.y2 );
-        //
-        ////Name
-        //ctx.font = "40px Arial";
-        //ctx.textBaseline = "top";
-        //ctx.textAlign = "center";
-        //ctx.fillText(this.name, this.x1 ,this.y2 + 40);
+        //Name
+        ctx.fillStyle = "white";
+        ctx.font = "40px Arial";
+        ctx.textBaseline = "bottom";
+        ctx.textAlign = "center";
+        ctx.fillText(this.name, this.x1 ,this.y2 + 80);
 
                 
         //Draw value in between 
-        ctx.font = "14px Arial";
+        ctx.font = "20px Arial";
         ctx.textBaseline = "middle";
         ctx.textAlign = "center ";
 
@@ -556,12 +585,31 @@ class Axis
         
         if(this.category == "ReferenceMap")
         {
-            distance = (this.y2 - this.y1)/(this.data.size-1);
-
-            for(const elem of this.data.keys())
+            if(this.data.size < max_number_of_inbetween_values_of_axis)
             {
-                ctx.fillText(elem, this.x1, this.y1 + distance * counter);
-                counter++;               
+                distance = (this.y2 - this.y1)/(this.data.size-1);
+
+                
+                for(const elem of this.data.keys())
+                {
+                    ctx.fillText(elem, this.x1, this.y1 + distance * counter);
+                    counter++;               
+                }
+            }else
+            {
+                distance = (this.y2 - this.y1) / (max_number_of_inbetween_values_of_axis);
+
+                const keys = [...this.data.keys()];
+                const skip = parseInt(keys.length/max_number_of_inbetween_values_of_axis);
+                
+                for(let it = 0; it < max_number_of_inbetween_values_of_axis; it++)
+                {
+
+                    ctx.fillText(keys[it*skip], this.x1, this.y1 + distance * counter);
+                    counter++;               
+                }
+                
+                ctx.fillText(keys[keys.length-1], this.x1, this.y1 + distance * max_number_of_inbetween_values_of_axis);
             }
             
         }else if(this.category == "Number")
@@ -572,9 +620,9 @@ class Axis
 
 
             let elem = this.min_value;
-            for(let counter = 0; counter < 10; counter++)
+            for(let counter = 0; counter < max_number_of_inbetween_values_of_axis; counter++)
             {
-            
+                
                 ctx.fillText(elem.toFixed(5), this.x1, this.y1 + distance * counter);
                 elem+=d_value
             }
@@ -589,10 +637,4 @@ class Axis
 
 
 
-
-
-
-function loadCSV()
-{
-    
-}
+        

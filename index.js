@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 
 let parallelCoordinates_visual;
-
+let CSVInput;
 
 function init() {
 
@@ -12,7 +12,7 @@ function init() {
 
 
     
-    parallelCoordinates_visual = new ParallelCoordinates(200,200,1400,900);
+    parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth,window.innerHeight);
     parallelCoordinates_visual.parseData(example_data);
     
     
