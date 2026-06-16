@@ -47,10 +47,91 @@ class ParallelCoordinates
 
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
+
+        this.backgroundCanvas0 = document.createElement('canvas');
+        this.axisCanvas1 = document.createElement('canvas');
+        this.linesegmentCanvas2 = document.createElement('canvas');
+        this.selectedlineCanvas3 = document.createElement('canvas');
+        this.zoomCanvas4 = document.createElement('canvas');
+
+        this.background_redraw = true;
+        this.axis_redraw = true;
+        this.linesegment_redraw = true;
+        this.selectedline_redraw = true;
+        this.zoom_redraw = true; 
+        
+        this.backgroundCtx0 = this.backgroundCanvas0.getContext('2d');
+        this.axisCtx1 = this.axisCanvas1.getContext('2d');
+        this.linesegmentCtx2 = this.linesegmentCanvas2.getContext('2d');
+        this.selectedlineCtx3 = this.selectedlineCanvas3.getContext('2d');
+        this.zoomCtx4 = this.zoomCanvas4.getContext('2d');
+
+        this.container = null;
+
         
     }
 
-    reset_visualization()
+    addEventListener(type, func)
+    {
+        this.container.addEventListener(type, func);
+    }
+    
+    getBackgroundCanvas()
+    {
+        return this.backgroundCanvas0;
+    }
+    
+    attachToBody(body)
+    {
+        this.container = document.createElement("div");
+
+        body.appendChild(this.container);
+        
+        this.container.style = 'relative';
+        
+        const canvas_list = [this.backgroundCanvas0,
+                       this.axisCanvas1,
+                       this.linesegmentCanvas2,
+                       this.selectedlineCanvas3,
+                       this.zoomCanvas4
+                      ];
+
+        for(let it = 0; it < canvas_list.length; it++)
+        {
+            const c = canvas_list[it];
+            c.style.position = "absolute";
+            c.style.left = "0";
+            c.style.right = "0";
+            c.style.zIndex = it;
+
+            this.container.appendChild(c);
+        }
+        
+
+    }
+    
+    resizeCanvas()
+    {
+        const canvas_list = [this.backgroundCanvas0,
+                       this.axisCanvas1,
+                       this.linesegmentCanvas2,
+                       this.selectedlineCanvas3,
+                       this.zoomCanvas4
+                      ];
+        
+        let canvas = null;
+        for(let it = 0; it < canvas_list.length; it++)
+        {
+            canvas = canvas_list[it];
+            canvas.width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = window.innerHeight * window.devicePixelRatio;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+        }
+
+    }
+    
+    resetVisualization()
     {
         this.axes = []; // Axis []
         this.axes_order = []; // int []
@@ -83,7 +164,7 @@ class ParallelCoordinates
     
     parseData(data)
     {
-        this.reset_visualization();
+        this.resetVisualization();
         
         this.data = data;
         let tuple_data = []
@@ -181,62 +262,65 @@ class ParallelCoordinates
         
     }
     
-    render(ctx)
+    render()
     {
 
+        this.backgroundCtx0.clearRect(0, 0, this.backgroundCanvas0.width, this.backgroundCanvas0.height);
+        
         //set background
-        ctx.fillStyle = "#AAAAAA";
-        ctx.fillRect(this.x_pos, this.y_pos, this.width, this.height);
+        this.backgroundCtx0.fillStyle = "#AAAAAA";
+        this.backgroundCtx0.fillRect(this.x_pos, this.y_pos, this.width, this.height);
 
-        ctx.fillStyle = "#000000";
+       
         
 
-
+        this.linesegmentCtx2.clearRect(0, 0, this.linesegmentCanvas2.width, this.linesegmentCanvas2.height);
         //render LineSegment
         for(const arr of this.data_line_segments)
         {
             for(const line_segment of arr)
             {
                 
-                ctx.fillStyle = "#000000";
-                ctx.beginPath();
-                ctx.moveTo(line_segment.x1, line_segment.y1);
-                ctx.lineTo(line_segment.x2, line_segment.y2);
-                ctx.strokeStyle = line_segment.color;
-                ctx.stroke();
-                ctx.closePath();
-
+                this.linesegmentCtx2.fillStyle = "#000000";
+                this.linesegmentCtx2.beginPath();
+                this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
+                this.linesegmentCtx2.lineTo(line_segment.x2, line_segment.y2);
+                this.linesegmentCtx2.strokeStyle = line_segment.color;
+                this.linesegmentCtx2.stroke();
+                this.linesegmentCtx2.closePath();
+                
             }
 
         }
 
-        //render selected axis
+        //render selected line
 
-
+        this.selectedlineCtx3.clearRect(0, 0, this.selectedlineCanvas3.width, this.selectedlineCanvas3.height);
         if(this.selectedLine != -1)
         {
             const lines = this.lines_of_tuple[this.selectedLine];
-
 
             
             for(const line_segment of lines)
             {
 
-                ctx.beginPath();
-                ctx.moveTo(line_segment.x1, line_segment.y1);
-                ctx.lineTo(line_segment.x2, line_segment.y2);
-                ctx.strokeStyle = "red";
-                ctx.stroke();
-                ctx.closePath();
-
+                this.selectedlineCtx3.beginPath();
+                this.selectedlineCtx3.moveTo(line_segment.x1, line_segment.y1);
+                this.selectedlineCtx3.lineTo(line_segment.x2, line_segment.y2);
+                this.selectedlineCtx3.strokeStyle = "red";
+                this.selectedlineCtx3.stroke();
+                this.selectedlineCtx3.closePath();
+                
             }
-        } 
+        }
+
+        this.axisCtx1.clearRect(0, 0, this.axisCanvas1.width, this.axisCanvas1.height);
         //render axes
         for(let it = 0; it < this.number_of_axes; it++)
         {
             let current_axis = this.axes[this.axes_order[it]];
 
-            current_axis.render(ctx);
+            current_axis.render(this.axisCtx1);
         }
     }
     //selectData(int, int)
@@ -491,7 +575,7 @@ class Axis
             for(let counter = 0; counter < 10; counter++)
             {
             
-                ctx.fillText(elem.toFixed(2), this.x1, this.y1 + distance * counter);
+                ctx.fillText(elem.toFixed(5), this.x1, this.y1 + distance * counter);
                 elem+=d_value
             }
         }

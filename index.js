@@ -1,29 +1,26 @@
 
 document.addEventListener('DOMContentLoaded', init);
 
-let CSVInput;
-let canvas_background_1;
-let canvas_axis_2;
-let canvas_lineSegment_3;
-let canvas_selectedLine_4;
-let ctx_background_1;
-let ctx_axis_2;
-let ctx_lineSegment_3;
-let ctx_selectedLine_4;
 
 
 let parallelCoordinates_visual;
 
 
 function init() {
-    canvas_background_1 = document.createElement('canvas');
 
-    canvas.style.margin = 0;
-    canvas.style.backgroundColor = '#FAFAFA';
 
-    canvas.addEventListener('pointermove', move)
-    canvas.addEventListener('pointerdown', down)
-    canvas.addEventListener('pointerup', up)
+
+
+    
+    parallelCoordinates_visual = new ParallelCoordinates(200,200,1400,900);
+    parallelCoordinates_visual.parseData(example_data);
+    
+    
+        
+
+   
+
+
 
     CSVInput = document.createElement("input");
     CSVInput.addEventListener("change", loadAndProcessCSV);
@@ -32,51 +29,40 @@ function init() {
     
     let body = document.getElementsByTagName('body')[0];
     body.appendChild(CSVInput);
-    body.appendChild(canvas);
+    parallelCoordinates_visual.attachToBody(body);
     body.style.margin = 0;
     body.style.overflow = 'hidden';
 
-    ctx = canvas.getContext('2d');
-
+    parallelCoordinates_visual.addEventListener('pointermove', move)
+    
+    
     resize();
     window.addEventListener('resize', resize);
 
-    parallelCoordinates_visual = new ParallelCoordinates(200,200,1400,900);
-    parallelCoordinates_visual.parseData(example_data);
     
     window.requestAnimationFrame(draw);
 }
 
 function resize() {
-    canvas.width = window.innerWidth * window.devicePixelRatio;
-    canvas.height = window.innerHeight * window.devicePixelRatio;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
+
+    parallelCoordinates_visual.resizeCanvas();
     window.requestAnimationFrame(draw);
 }
 
 function move(evt) {
 
+    let canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
-
+    
     parallelCoordinates_visual.selectData(evt.x - rect.x, evt.y - rect.y);
     window.requestAnimationFrame(draw);
 }
 
-function down(evt) {
-    down_state = true;
- }
 
-function up(evt) {
-    down_state = false;
-}
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    
-
-    parallelCoordinates_visual.render(ctx);
+    parallelCoordinates_visual.render();
 
 }
 
