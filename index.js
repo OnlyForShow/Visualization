@@ -12,7 +12,7 @@ function init() {
 
 
     
-    parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth,window.innerHeight);
+    parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth* window.devicePixelRatio,window.innerHeight* window.devicePixelRatio);
     parallelCoordinates_visual.parseData(example_data);
     
     
