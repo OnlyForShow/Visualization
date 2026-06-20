@@ -10,7 +10,7 @@ function init() {
 
 
 
-g
+
     
 
     parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth * window.devicePixelRatio,
