@@ -30,8 +30,8 @@ class ParallelCoordinates
         this.x_pos = x;
         this.y_pos = y;
 
-        this.border_x = 200; //in px 
-        this.border_y = 200; //in px 
+        this.border_x = width*0.1; //in px 
+        this.border_y = height*0.1; //in px 
 
         this.xstart = this.x_pos + this.border_x;
         this.xend = this.width - this.border_x;
@@ -134,7 +134,22 @@ class ParallelCoordinates
         this.axis_redraw = true;
         this.linesegment_redraw = true;
         this.selectedline_redraw = true;
-        this.zoom_redraw = true; 
+        this.zoom_redraw = true;
+
+        this.width = this.backgroundCanvas0.width;
+        this.height = this.backgroundCanvas0.height;
+        
+        this.border_x = this.width*0.1; //in px 
+        this.border_y = this.height*0.1; //in px 
+
+        this.xstart = this.x_pos + this.border_x;
+        this.xend = this.width - this.border_x;
+
+        
+        this.ystart = this.y_pos + this.border_y;
+        this.yend = this.y_pos + this.height - this.border_y;
+
+        this.calculatePosition();
         
     }
     
@@ -215,7 +230,7 @@ class ParallelCoordinates
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
             //constructor(name, x1, y1, x2, y2, color, data_tuple)
-    	    let current_axis = new Axis(data[0][i], //name
+    	    let current_axis = new Axis(this.data[0][i], //name
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.border_y,
                                         this.x_pos + this.border_x + this.distance * i,
@@ -265,7 +280,6 @@ class ParallelCoordinates
                                                    x_pos_next, y_next,              //x2, y2
                                                    "#000000",                       //color
                                                    j                                //tuple-reference
-                                                   
                                                   );
                 
                 this.data_line_segments[i].push(line_segment); 
@@ -278,6 +292,67 @@ class ParallelCoordinates
     
         
     }
+
+    calculatePosition()
+    {
+
+        //Determine distance
+        this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
+
+
+        //Generate Axis
+    	for( let i = 0; i < this.number_of_axes; i++)
+    	{
+            //constructor(name, x1, y1, x2, y2, color, data_tuple)
+
+    	    this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
+    	    this.axes[i].y1 = this.y_pos + this.border_y;
+    	    this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
+    	    this.axes[i].y2 = this.y_pos + this.height - this.border_y;
+    	    
+
+    	}
+
+        //Generate LineSegments
+        for( let i = 0; i < this.number_of_axes - 1; i++)
+        {
+            
+
+            let current_axis = this.axes[this.axes_order[i]];
+            let next_axis = this.axes[this.axes_order[i+1]];
+
+            const x_pos = current_axis.x1;
+            const x_pos_next = next_axis.x1;
+            
+            for(let j = 1; j < this.data.length; j++)
+            {
+
+                const value_current_axis = this.data[j][this.axes_order[i]];
+                const value_next_axis = this.data[j][this.axes_order[i+1]];
+
+                	
+                const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
+                const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
+                	
+                	
+                	
+                const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                
+
+                
+
+                this.data_line_segments[i][j-1].x1 = x_pos;
+                this.data_line_segments[i][j-1].y1 = y_current;
+                this.data_line_segments[i][j-1].x2 = x_pos_next;
+                this.data_line_segments[i][j-1].y2 = y_next;
+                
+                                
+            }
+        }
+
+    }
+    
     
     render()
     {
@@ -292,7 +367,7 @@ class ParallelCoordinates
         
         if(this.linesegment_redraw)
         {
-            this.line_segment = false;
+            this.linesegment_redraw = false;
             
             this.linesegmentCtx2.clearRect(0, 0, this.linesegmentCanvas2.width, this.linesegmentCanvas2.height);
             //render LineSegment
@@ -331,12 +406,23 @@ class ParallelCoordinates
                     this.selectedlineCtx3.beginPath();
                     this.selectedlineCtx3.moveTo(line_segment.x1, line_segment.y1);
                     this.selectedlineCtx3.lineTo(line_segment.x2, line_segment.y2);
+
+
+                    //stylized the current selection
+                    
+                    this.selectedlineCtx3.lineWidth = 5;
+                    this.selectedlineCtx3.shadowColor = "white";
+                    this.selectedlineCtx3.shadowBlur = 15;
                     this.selectedlineCtx3.strokeStyle = "red";
+                    this.selectedlineCtx3.lineCap = "round";
+                    
                     this.selectedlineCtx3.stroke();
                     this.selectedlineCtx3.closePath();
                     
                 }
 
+                this.selectedlineCtx3.shadowColor = null;
+                this.selectedlineCtx3.shadowBlur = null;
                 this.selectedlineCtx3.font = "40px Arial";
                 this.selectedlineCtx3.fillStyle = "black";
                 this.selectedlineCtx3.textBaseline = "top";
@@ -366,10 +452,11 @@ class ParallelCoordinates
     //selectData(int, int)
     selectData(mouse_x, mouse_y)
     {
-        //GetSegment
+
 
         this.selectedline_redraw = true;
-        
+
+        //GetSegment
         const p_x = mouse_x - this.xstart;
         const p_y = mouse_y - this.ystart;
 

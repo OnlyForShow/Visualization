@@ -12,7 +12,8 @@ function init() {
 
 
     
-    parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth,window.innerHeight);
+    parallelCoordinates_visual = new ParallelCoordinates(0,0,window.innerWidth * window.devicePixelRatio,
+                                                         window.innerHeight * window.devicePixelRatio);
     parallelCoordinates_visual.parseData(example_data);
     
     
@@ -54,7 +55,8 @@ function move(evt) {
     let canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
     
-    parallelCoordinates_visual.selectData(evt.x - rect.x, evt.y - rect.y);
+    parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
+                                          evt.y*window.devicePixelRatio - rect.y);
     window.requestAnimationFrame(draw);
 }
 
