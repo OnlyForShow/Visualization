@@ -713,7 +713,8 @@ class Axis
           
             const min = this.min_value;
             const max = this.max_value;
-            
+
+            //halving the diff makes an reasonable increment
             const diff = (max - min)*0.5;
 
             //Figure out where the diff value falls in between to figure a suitable step
@@ -741,6 +742,17 @@ class Axis
             
             const total_length = this.y2 - this.y1;
 
+
+            //Strict floor and ceil
+            //Normal: ceil(9.2) = 10
+            //        floor(9.2) = 9
+            //        ceil(9.0) = 9
+            //        floor(9.0) = 9
+            //
+            //Strict: sceil(9.2) = floor(9.2) + 1 = 10
+            //        sfloor(9.2) = ceil(9.2) - 1 = 9
+            //        sceil(9.0) = floor(9.0) + 1 = 10
+            //        sfloor(9.0) = ceil(9.0) - 1 = 8
             const k_min = Math.floor(min/step) + 1;
             const k_max = Math.ceil(max/step) - 1;
             
