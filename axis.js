@@ -1,4 +1,4 @@
-    
+                                                  
 
 let example_data = [["id","id*5","e^id","Comment"],
                     [1,5,Math.exp(1),"Wow"],
@@ -12,8 +12,11 @@ let example_data = [["id","id*5","e^id","Comment"],
                     [9,45,Math.exp(9),"Wow"],
                    ];
 
-
-
+const global_axis_color           = "222222";
+const global_line_segment_color   = "000000";
+const global_selected_line_color  = "red";
+const global_selection_text_color = "white";
+const global_axis_text_color      = "white";
 
 class ParallelCoordinates
 {
@@ -235,7 +238,7 @@ class ParallelCoordinates
                                         this.y_pos + this.border_y,
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.height - this.border_y,
-                                        "#000000",
+                                        global_axis_color,
                                         tuple_data[i]
                                        );
             
@@ -272,13 +275,13 @@ class ParallelCoordinates
                 	
                 	
                 	
-                const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
-                const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                const y_current = this.yend - current_axis_relative_pos * (this.yend - this.ystart);
+                const y_next = this.yend - next_axis_relative_pos * (this.yend - this.ystart);
                 
                 
                 let line_segment = new LineSegment(x_pos, y_current,                //x1, y1
                                                    x_pos_next, y_next,              //x2, y2
-                                                   "#000000",                       //color
+                                                   global_line_segment_color,       //color
                                                    j                                //tuple-reference
                                                   );
                 
@@ -336,8 +339,8 @@ class ParallelCoordinates
                 	
                 	
                 	
-                const y_current = current_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
-                const y_next = next_axis_relative_pos * (this.yend - this.ystart) + this.ystart;
+                const y_current = this.yend - current_axis_relative_pos * (this.yend - this.ystart);
+                const y_next = this.yend - next_axis_relative_pos * (this.yend - this.ystart);
                 
 
                 
@@ -360,7 +363,7 @@ class ParallelCoordinates
         this.backgroundCtx0.clearRect(0, 0, this.backgroundCanvas0.width, this.backgroundCanvas0.height);
         
         //set background
-        this.backgroundCtx0.fillStyle = "#AAAAAA";
+        this.backgroundCtx0.fillStyle = "#555555";
         this.backgroundCtx0.fillRect(this.x_pos, this.y_pos, this.width, this.height);
 
        
@@ -413,7 +416,7 @@ class ParallelCoordinates
                     this.selectedlineCtx3.lineWidth = 5;
                     this.selectedlineCtx3.shadowColor = "white";
                     this.selectedlineCtx3.shadowBlur = 15;
-                    this.selectedlineCtx3.strokeStyle = "red";
+                    this.selectedlineCtx3.strokeStyle = global_selected_line_color;
                     this.selectedlineCtx3.lineCap = "round";
                     
                     this.selectedlineCtx3.stroke();
@@ -424,7 +427,7 @@ class ParallelCoordinates
                 this.selectedlineCtx3.shadowColor = null;
                 this.selectedlineCtx3.shadowBlur = null;
                 this.selectedlineCtx3.font = "40px Arial";
-                this.selectedlineCtx3.fillStyle = "black";
+                this.selectedlineCtx3.fillStyle = global_selection_text_color;
                 this.selectedlineCtx3.textBaseline = "top";
                 const tuple_display = this.data[this.selectedLine];
                 this.selectedlineCtx3.fillText(`(${tuple_display.join(", ")})`, this.x_pos, this.y_pos);
@@ -646,6 +649,11 @@ class Axis
     render(ctx)
     {
         //draw axis
+        ctx.lineWidth = 5;
+        //ctx.shadowColor = "white";
+        //ctx.shadowBlur = 15;
+        ctx.lineCap = "round";
+        
         ctx.beginPath();
         ctx.moveTo(this.x1, this.y1);
         ctx.lineTo(this.x1, this.y2);
@@ -654,11 +662,11 @@ class Axis
         ctx.closePath();
 
         //Name
-        ctx.fillStyle = "white";
+        ctx.fillStyle = global_axis_text_color;
         ctx.font = "40px Arial";
         ctx.textBaseline = "bottom";
         ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x1 ,this.y2 + 80);
+        ctx.fillText(this.name, this.x2 ,this.y2 + 80);
 
                 
         //Draw value in between 
@@ -692,27 +700,70 @@ class Axis
                 for(let it = 0; it < max_number_of_inbetween_values_of_axis; it++)
                 {
 
-                    ctx.fillText(keys[it*skip], this.x1, this.y1 + distance * counter);
+                    ctx.fillText(keys[it*skip], this.x1, this.y2 - distance * counter);
                     counter++;               
                 }
                 
-                ctx.fillText(keys[keys.length-1], this.x1, this.y1 + distance * max_number_of_inbetween_values_of_axis);
+                ctx.fillText(keys[keys.length-1], this.x1, this.y2 - distance * max_number_of_inbetween_values_of_axis);
             }
             
         }else if(this.category == "Number")
         {
-            distance = (this.y2 - this.y1)/(max_number_of_inbetween_values_of_axis-1);
-            const d_value = (this.max_value - this.min_value)/(max_number_of_inbetween_values_of_axis-1);
+          
+          
+            const min = this.min_value;
+            const max = this.max_value;
+            
+            const diff = (max - min)*0.5;
 
-
-
-            let elem = this.min_value;
-            for(let counter = 0; counter < max_number_of_inbetween_values_of_axis; counter++)
+            //Figure out where the diff value falls in between to figure a suitable step
+            const ref_arr = [0.00001,0.0001,0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000]; 
+            
+            let step = null;
+            for(let i = 0; i < ref_arr.length; i++)
             {
-                
-                ctx.fillText(elem.toFixed(5), this.x1, this.y1 + distance * counter);
-                elem+=d_value
+                if(ref_arr[i] > diff)
+                {
+                    if(i == 0)
+                    {
+                        step = ref_arr[i];
+                    }else
+                    {
+                        step = ref_arr[i-1];
+                    }
+                    break;
+                }
             }
+            //if no step was found just go with the largest step value
+            if(step == null)step = ref_arr[ref_arr.length-1];
+
+           
+            
+            const total_length = this.y2 - this.y1;
+
+            const k_min = Math.floor(min/step) + 1;
+            const k_max = Math.ceil(max/step) - 1;
+            
+            const k = k_max - k_min;
+
+            const L1 = (k_min*step - min)/(step);
+            const L2 = (max - k_max*step)/(step);
+            
+            const diff_distance = (total_length)/(k + L1 + L2);
+            
+            
+
+            ctx.fillText(this.min_value, this.x1, this.y2);            
+            
+            for(let counter = 0; counter <= k; counter++)
+            {
+                const display_value = k_min * step + counter * step;
+                const y_position =  this.y2 - (L1*diff_distance + diff_distance * counter);
+                ctx.fillText(display_value, this.x1, y_position);
+            }
+            
+            ctx.fillText(this.max_value, this.x1, this.y1);                        
+            
         }
             
 
