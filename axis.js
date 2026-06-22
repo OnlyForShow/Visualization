@@ -687,7 +687,7 @@ class Axis
                 
                 for(const elem of this.data.keys())
                 {
-                    ctx.fillText(elem, this.x1, this.y1 + distance * counter);
+                    ctx.fillText(elem, this.x1, this.y2 - distance * counter);
                     counter++;               
                 }
             }else
