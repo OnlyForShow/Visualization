@@ -13,6 +13,8 @@ let example_data = [["id","id*5","e^id","Comment"],
                    ];
 
 
+const reorder_box_color = "rgba(255,255,255,0.5)";
+const selection_box_color = "rgba(255,255,255,0.5)";
 
 const global_background_color     = "555555";
 
@@ -21,6 +23,33 @@ const global_line_segment_color   = "000000";
 const global_selected_line_color  = "red";
 const global_selection_text_color = "white";
 const global_axis_text_color      = "white";
+
+//axis selection box
+const width_selection_box = 40; //px
+
+const reorder_box_offset = 20; //px
+
+//utility functions
+// p = {x , y}
+// rect = {x, y, w, h}
+// returns bool
+function point_intersect_rect(p,rect)
+{
+    return (rect.x < p.x && p.x < rect.x + rect.w &&
+            rect.y < p.y && p.y < rect.y + rect.h); 
+}
+
+function textBounds(ctx, text, x, y) {
+    const m = ctx.measureText(text);
+
+    return {
+        x: x - m.actualBoundingBoxLeft,
+        y: y - m.actualBoundingBoxAscent,
+        w: m.actualBoundingBoxLeft + m.actualBoundingBoxRight,
+        h: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
+    };
+}
+
 
 class ParallelCoordinates
 {
@@ -57,9 +86,9 @@ class ParallelCoordinates
         this.lines_of_tuple = []
 
         this.backgroundCanvas0 = document.createElement('canvas');
-        this.axisCanvas1 = document.createElement('canvas');
         this.linesegmentCanvas2 = document.createElement('canvas');
         this.selectedlineCanvas3 = document.createElement('canvas');
+        this.axisCanvas1 = document.createElement('canvas');
         this.zoomCanvas4 = document.createElement('canvas');
 
         this.cursorCanvas = document.createElement('canvas');
@@ -77,10 +106,14 @@ class ParallelCoordinates
         this.selectedlineCtx3 = this.selectedlineCanvas3.getContext('2d');
         this.zoomCtx4 = this.zoomCanvas4.getContext('2d');
 
+
+        //div element where all canvases are stacked on top of each other
         this.container = null;
 
-        //this.cursorCanvas.style.cursor="move";
-        
+     
+
+
+
     }
 
     addEventListener(type, func)
@@ -103,8 +136,8 @@ class ParallelCoordinates
         
         const canvas_list = [this.backgroundCanvas0,
                              this.linesegmentCanvas2,
-                             this.axisCanvas1,
                              this.selectedlineCanvas3,
+                             this.axisCanvas1,
                              this.zoomCanvas4,
                              this.cursorCanvas
                             ];
@@ -119,12 +152,14 @@ class ParallelCoordinates
 
             this.container.appendChild(c);
         }
-        
+
+        this.calculatePosition();
 
     }
     
     resizeCanvas()
     {
+        console.log("resize");
         const canvas_list = [this.backgroundCanvas0,
                              this.axisCanvas1,
                              this.linesegmentCanvas2,
@@ -264,6 +299,7 @@ class ParallelCoordinates
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.height - this.border_y,
                                         global_axis_color,
+                                        this.axisCtx1,
                                         tuple_data[i]
                                        );
             
@@ -293,6 +329,10 @@ class ParallelCoordinates
 
                 const value_current_axis = data[j][this.axes_order[i]];
                 const value_next_axis = data[j][this.axes_order[i+1]];
+
+                
+                if(current_axis.interpolation === null)return;
+                if(next_axis.interpolation === null)return;
 
                 	
                 const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
@@ -343,7 +383,7 @@ class ParallelCoordinates
     	    this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
     	    this.axes[i].y2 = this.y_pos + this.height - this.border_y;
 
-            //this.axes[i].updateBoxes();
+            this.axes[i].updateBoxes();
 
     	}
 
@@ -367,7 +407,10 @@ class ParallelCoordinates
                 const value_current_axis = this.data[j][this.axes_order[i]];
                 const value_next_axis = this.data[j][this.axes_order[i+1]];
 
-                	
+
+                if(current_axis.interpolation === null)return;
+                if(next_axis.interpolation === null)return;
+                
                 const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
                 const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
                 	
@@ -391,13 +434,9 @@ class ParallelCoordinates
     }
     
     
-    render()
-    selectData
-
-    //
-
     
-    //selectData(int, int)
+    
+    render()
     {
 
         this.backgroundCtx0.clearRect(0, 0, this.backgroundCanvas0.width, this.backgroundCanvas0.height);
@@ -491,26 +530,47 @@ class ParallelCoordinates
             {
                 let current_axis = this.axes[this.axes_order[it]];
 
-                current_axis.render(this.axisCtx1);
+                current_axis.render();
             }
         }
-    }clearRect(mouse_x, mouse_y)
+    }
+
+    //selectData(int, int)
+    selectData(mouse_x, mouse_y)
     {
         const p_x = mouse_x - this.xstart;
         const p_y = mouse_y - this.ystart;
 
         //handle axis selection
 
-        this.selected_axis_redraw = this;
+        this.selected_axis_redraw = true;
+        this.axis_redraw = true;
+        for(let axis of this.axes)
+        {
+            axis.selected_reorder_box = false;
+            axis.selected_selection_box = false;
+            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
+            {
 
+                axis.selected_reorder_box = true;
+                this.cursorCanvas.style.cursor="ew-resize";
+                break;
+            }
+            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
+            {
+                axis.selected_selection_box = true;
+                this.cursorCanvas.style.cursor="ns-resize";
+                break;
+            }
+        }
         
         
         //handle selection_line
 
-        selectedline_redraw.true = const;
+        this.selectedline_redraw = true;
 
         //GetSegment
-        true segment = Math.floor(p_x / this.distance);
+        const segment = Math.floor(p_x / this.distance);
 
 
 
@@ -574,7 +634,7 @@ class Axis
     static axis_name_font_size = 40; // in px
     static axis_name_offset = 80; // in px
     
-    constructor(name, x1, y1, x2, y2, color, data_tuple)
+    constructor(name, x1, y1, x2, y2, color, canvas_context, data_tuple)
     {
         //Name that will be used for referencing the axis
         this.name = name;
@@ -590,9 +650,13 @@ class Axis
         this.category = "";
         this.data = null;
 
-        this.max_value = null;
-        this.min_value = null;
+        this.max_value = Infinity;
+        this.min_value = -Infinity;
 
+        this.ReferenceMap = new Map();
+        this.firstMapElement = null;
+        this.lastMapElement = null;
+        this.indexMapElement = 0;
         
         //a lambda function that returns a real number between 0 and 1
         //depending on the parameter
@@ -605,30 +669,70 @@ class Axis
         //Example: let pos = axis.interpolation("Green");
         //         pos = 0.5
 
+        this.interpolation = null;
         if(data_tuple.length != 0)
         {
             this.interpolation = this.createInterpolation(data_tuple);
-        }else
-        {
-            this.interpolation = null;
         }
 
+        this.ctx = canvas_context;
+        
+        this.reorder_box = {x: 0, y: 0, w: 0,h: 0};
+        this.selected_reorder_box = false;
 
-
+        
+        this.selectionBox = {x: 0, y: 0, w: 0,h: 0};
+        this.selected_selection_box = false,
+        
         this.being_dragged = false;
 
         
         //Display-Color
         this.color = color;
+
+        this.updateBoxes();
     }
 
-
-    addElement()
+    addElement(elem)
     {
-        
+        //this interpolation creation has no return value
+        //the interpolation gets set in the function
+        this.streamInterpolation(elem);
     }
      
+    updateBoxes()
+    {
+    
 
+        this.ctx.moveTo(this.x1, this.y1);
+        this.ctx.lineTo(this.x1, this.y2);
+        this.ctx.closePath();
+       
+        this.ctx.font = Axis.axis_name_font_size+"px Arial"; 
+        this.ctx.textBaseline = "top";
+        this.ctx.textAlign = "center";
+        
+        //calculate reorder_box
+        //You drag the Name of the axis in order to move it
+        this.reorder_box = textBounds(this.ctx,
+                                      this.name,
+                                      this.x1,
+                                      this.y1 - Axis.axis_name_offset);
+
+        
+        this.reorder_box.x -= reorder_box_offset;
+        this.reorder_box.y -= reorder_box_offset;
+        this.reorder_box.w += 2*reorder_box_offset;
+        this.reorder_box.h += 2*reorder_box_offset;
+        
+        
+        this.selectionBox = {x : this.x1 - width_selection_box/2,
+                             y: this.y1,
+                             w: width_selection_box,
+                             h: this.y2 - this.y1};
+
+    }
+    
     //let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
     // table[0] => [1,2,3]
     // table[1] => [5,10,15]
@@ -662,7 +766,7 @@ class Axis
             this.max_value = MAX_VALUE;
 
             this.category = "Number";
-            this.data = 0;
+         
             
             return (x) => {
                 
@@ -674,67 +778,147 @@ class Axis
     	    //If categorial then put the data into map datastructure
     	    //Get the total number of elements and save the order
 
-            let ReferenceMap = new Map();
+            
 
             //Categorical data get a ReferenceMap
             this.category = "ReferenceMap";
-            this.data = ReferenceMap;
             
-            let index = 0;
 
-            let first_element = data[0];
-            let last_element = null;
+            
+            this.firstMapElement = data[0];
+            this.lastMapElement = null;
             
             for(const elem of data)
             {
-                if(ReferenceMap.has(elem)) continue;
-                ReferenceMap.set(elem, index++);
-                last_element = elem;
+                if(this.ReferenceMap.has(elem)) continue;
+                this.ReferenceMap.set(elem, this.indexMapElement++);
+                this.lastMapElement = elem;
             }
 
             MIN_VALUE = 0;
-            MAX_VALUE = ReferenceMap.size - 1;
+            MAX_VALUE = this.ReferenceMap.size - 1;
 
-            this.min_value = first_element;
-            this.max_value = last_element;
+            this.min_value = this.firstMapElement;
+            this.max_value = this.lastMapElement;
 
-            this.data = ReferenceMap;
-            
+
+                     
             return (x) => {
-                return (ReferenceMap.get(x)/MAX_VALUE);
+                return (this.ReferenceMap.get(x)/MAX_VALUE);
             };
         }
 
     }
 
-
-    render(ctx)
+    streamInterpolation(elem)
     {
-        //draw axis
-        ctx.lineWidth = 5;
-        //ctx.shadowColor = "white";
-        //ctx.shadowBlur = 15;
-        ctx.lineCap = "round";
+ 
+        //Check whether data is numerical or categorical
+        //isFinite() checks whether it is number
+        //Make the assumption that the first element type is representative of every element in the tuple
+        if(this.category === "Number")
+        {
+            //If numerical then get the maximum and minimum data element
+            
+            if ( elem < this.min_value ) this.min_value = Number(elem);
+            if ( elem > this.max_value ) this.max_value = Number(elem);
+            
+            
+
+            
+            this.interpolation =  (x) => {
+                
+                return (x - this.min_value) / (this.max_value - this.min_value);
+            };
+            
+        }else if(this.category === "ReferenceMap")
+        {
+    	    //If categorial then put the data into map datastructure
+    	    //Get the total number of elements and save the order
+
+            
+
+            //Categorical data get a ReferenceMap
+
+            
+            if(this.ReferenceMap.size === 0)
+            {
+                this.firstMapElement = elem;
+            }
+            
+            if(this.ReferenceMap.has(elem)) return;
+            
+            this.ReferenceMap.set(elem, this.indexMapElement++);
+            this.lastMapElement = elem;
+            
+
+
+            let MAX_VALUE = this.ReferenceMap.size - 1;
+
+            this.min_value = this.firstMapElement;
+            this.max_value = this.lastMapElement;
+
+
+                     
+            this.interpolation = (x) => {
+                return (this.ReferenceMap.get(x)/MAX_VALUE);
+            };
+        }
+
+    }
+
+    render()
+    {
+
         
-        ctx.beginPath();
-        ctx.moveTo(this.x1, this.y1);
-        ctx.lineTo(this.x1, this.y2);
-        ctx.strokeStyle = this.color;
-        ctx.stroke();
-        ctx.closePath();
+        if(this.selected_reorder_box)
+        {
+            //Draw reorder_box
+            this.ctx.fillStyle = reorder_box_color;
+            this.ctx.fillRect(this.reorder_box.x,
+                         this.reorder_box.y,
+                         this.reorder_box.w,
+                         this.reorder_box.h);
+        }
+
+        if(this.selected_selection_box)
+        {
+            //Draw selection box
+            this.ctx.fillStyle = selection_box_color;
+            this.ctx.fillRect(this.selectionBox.x,
+                         this.selectionBox.y,
+                         this.selectionBox.w,
+                         this.selectionBox.h);
+        }
+        
+        
+        //draw axis
+        this.ctx.lineWidth = 5;
+        //this.ctx.shadowColor = "white";
+        //this.ctx.shadowBlur = 15;
+        this.ctx.lineCap = "round";
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.x1, this.y1);
+        this.ctx.lineTo(this.x1, this.y2);
+        this.ctx.strokeStyle = this.color;
+        this.ctx.stroke();
+        this.ctx.closePath();
 
         //Name
-        ctx.fillStyle = global_axis_text_color;
-        ctx.font = Axis.axis_name_font_size+"px Arial"; 
-        ctx.textBaseline = "top";
-        ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x1 ,this.y1 - Axis.axis_name_offset);
+        this.ctx.fillStyle = global_axis_text_color;
+        this.ctx.font = Axis.axis_name_font_size+"px Arial"; 
+        this.ctx.textBaseline = "top";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText(this.name, this.x1 ,this.y1 - Axis.axis_name_offset);
 
+
+        
                 
         //Draw value in between 
-        ctx.font = "20px Arial";
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "center ";
+        this.ctx.font = "20px Arial";
+        this.ctx.textBaseline = "middle";
+        this.ctx.textAlign = "center ";
 
 
         let counter = 0;
@@ -742,31 +926,31 @@ class Axis
         
         if(this.category == "ReferenceMap")
         {
-            if(this.data.size < max_number_of_inbetween_values_of_axis)
+            if(this.ReferenceMap.size < max_number_of_inbetween_values_of_axis)
             {
-                distance = (this.y2 - this.y1)/(this.data.size-1);
+                distance = (this.y2 - this.y1)/(this.ReferenceMap.size-1);
 
                 
-                for(const elem of this.data.keys())
+                for(const elem of this.ReferenceMap.keys())
                 {
-                    ctx.fillText(elem, this.x1, this.y2 - distance * counter);
+                    this.ctx.fillText(elem, this.x1, this.y2 - distance * counter);
                     counter++;               
                 }
             }else
             {
                 distance = (this.y2 - this.y1) / (max_number_of_inbetween_values_of_axis);
 
-                const keys = [...this.data.keys()];
+                const keys = [...this.ReferenceMap.keys()];
                 const skip = parseInt(keys.length/max_number_of_inbetween_values_of_axis);
                 
                 for(let it = 0; it < max_number_of_inbetween_values_of_axis; it++)
                 {
 
-                    ctx.fillText(keys[it*skip], this.x1, this.y2 - distance * counter);
+                    this.ctx.fillText(keys[it*skip], this.x1, this.y2 - distance * counter);
                     counter++;               
                 }
                 
-                ctx.fillText(keys[keys.length-1], this.x1, this.y2 - distance * max_number_of_inbetween_values_of_axis);
+                this.ctx.fillText(keys[keys.length-1], this.x1, this.y2 - distance * max_number_of_inbetween_values_of_axis);
             }
             
         }else if(this.category == "Number")
@@ -827,16 +1011,16 @@ class Axis
             
             
 
-            ctx.fillText(this.min_value, this.x1, this.y2);            
+            this.ctx.fillText(this.min_value, this.x1, this.y2);            
             
             for(let counter = 0; counter <= k; counter++)
             {
                 const display_value = k_min * step + counter * step;
                 const y_position =  this.y2 - (L1*diff_distance + diff_distance * counter);
-                ctx.fillText(display_value, this.x1, y_position);
+                this.ctx.fillText(display_value, this.x1, y_position);
             }
             
-            ctx.fillText(this.max_value, this.x1, this.y1);                        
+            this.ctx.fillText(this.max_value, this.x1, this.y1);                        
             
         }
             
@@ -910,3 +1094,4 @@ class Bin
 
 
         
+    

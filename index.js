@@ -46,11 +46,11 @@ function init() {
 
     parallelCoordinates_visual.addEventListener("wheel", mouse_wheel);
     
-    resize();
-    window.addEventListener('resize', resize);
 
+    window.addEventListener('resize', resize);
+    resize();
     
-    window.requestAnimationFrame(draw);
+    //window.requestAnimationFrame(draw);
 }
 
 function resize() {
@@ -100,10 +100,15 @@ function down(evt)
 
 function move(evt) {
 
-    console.log("Dragging: "+dragging);
+    
     
     const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
+
+    if(dragging)
+    {
+        
+    }
     
     parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
                                           evt.y*window.devicePixelRatio - rect.y,
