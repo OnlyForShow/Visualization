@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', init);
 let parallelCoordinates_visual;
 let CSVInput;
 
+let dragging = false;
+
 function init() {
 
 
@@ -38,8 +40,11 @@ function init() {
     body.style.margin = 0;
     body.style.overflow = 'hidden';
 
-    parallelCoordinates_visual.addEventListener('pointermove', move)
-    
+    parallelCoordinates_visual.addEventListener('pointermove', move);
+    parallelCoordinates_visual.addEventListener('pointerdown', down);
+    parallelCoordinates_visual.addEventListener('pointerup', up);
+
+    parallelCoordinates_visual.addEventListener("wheel", mouse_wheel);
     
     resize();
     window.addEventListener('resize', resize);
@@ -54,13 +59,55 @@ function resize() {
     window.requestAnimationFrame(draw);
 }
 
-function move(evt) {
+function mouse_wheel(e)
+{
+    console.log("deltaX: "+e.deltaX);
+    console.log("deltaY: "+e.deltaY);
+    console.log("deltaMode: "+e.deltaMode);
 
-    let canvas = parallelCoordinates_visual.getBackgroundCanvas();
+
+    e.preventDefault();
+}
+
+function up(evt)
+{
+
+    dragging = false;
+    
+    const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
     
     parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
-                                          evt.y*window.devicePixelRatio - rect.y);
+                                          evt.y*window.devicePixelRatio - rect.y,
+                                          );
+    window.requestAnimationFrame(draw);
+}
+
+function down(evt)
+{
+
+
+    dragging = true;
+    
+    const canvas = parallelCoordinates_visual.getBackgroundCanvas();
+    const rect = canvas.getBoundingClientRect();
+    
+    parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
+                                          evt.y*window.devicePixelRatio - rect.y,
+                                          );
+    window.requestAnimationFrame(draw);
+}
+
+function move(evt) {
+
+    console.log("Dragging: "+dragging);
+    
+    const canvas = parallelCoordinates_visual.getBackgroundCanvas();
+    const rect = canvas.getBoundingClientRect();
+    
+    parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
+                                          evt.y*window.devicePixelRatio - rect.y,
+                                          );
     window.requestAnimationFrame(draw);
 }
 

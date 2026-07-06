@@ -1,4 +1,4 @@
-                                                  
+                                                      
 
 let example_data = [["id","id*5","e^id","Comment"],
                     [1,5,Math.exp(1),"Wow"],
@@ -11,6 +11,10 @@ let example_data = [["id","id*5","e^id","Comment"],
                     [8,40,Math.exp(8),"Zapper"],
                     [9,45,Math.exp(9),"Wow"],
                    ];
+
+
+
+const global_background_color     = "555555";
 
 const global_axis_color           = "222222";
 const global_line_segment_color   = "000000";
@@ -34,7 +38,7 @@ class ParallelCoordinates
         this.y_pos = y;
 
         this.border_x = width*0.1; //in px 
-        this.border_y = height*0.1; //in px 
+        this.border_y = Axis.axis_name_offset + Axis.axis_name_font_size; //in px 
 
         this.xstart = this.x_pos + this.border_x;
         this.xend = this.width - this.border_x;
@@ -58,11 +62,14 @@ class ParallelCoordinates
         this.selectedlineCanvas3 = document.createElement('canvas');
         this.zoomCanvas4 = document.createElement('canvas');
 
+        this.cursorCanvas = document.createElement('canvas');
+        
         this.background_redraw = true;
         this.axis_redraw = true;
         this.linesegment_redraw = true;
         this.selectedline_redraw = true;
-        this.zoom_redraw = true; 
+        this.zoom_redraw = true;
+        this.selected_axis_redraw = true;
         
         this.backgroundCtx0 = this.backgroundCanvas0.getContext('2d');
         this.axisCtx1 = this.axisCanvas1.getContext('2d');
@@ -72,6 +79,7 @@ class ParallelCoordinates
 
         this.container = null;
 
+        //this.cursorCanvas.style.cursor="move";
         
     }
 
@@ -97,7 +105,8 @@ class ParallelCoordinates
                              this.linesegmentCanvas2,
                              this.axisCanvas1,
                              this.selectedlineCanvas3,
-                             this.zoomCanvas4
+                             this.zoomCanvas4,
+                             this.cursorCanvas
                             ];
 
         for(let it = 0; it < canvas_list.length; it++)
@@ -117,10 +126,11 @@ class ParallelCoordinates
     resizeCanvas()
     {
         const canvas_list = [this.backgroundCanvas0,
-                       this.axisCanvas1,
-                       this.linesegmentCanvas2,
-                       this.selectedlineCanvas3,
-                       this.zoomCanvas4
+                             this.axisCanvas1,
+                             this.linesegmentCanvas2,
+                             this.selectedlineCanvas3,
+                             this.zoomCanvas4,
+                             this.cursorCanvas
                       ];
         
         let canvas = null;
@@ -142,9 +152,9 @@ class ParallelCoordinates
         this.width = this.backgroundCanvas0.width;
         this.height = this.backgroundCanvas0.height;
         
-        this.border_x = this.width*0.1; //in px 
-        this.border_y = this.height*0.1; //in px 
-
+        this.border_x = this.width*0.1; //in px
+        this.border_y = Axis.axis_name_offset + Axis.axis_name_font_size; //in px 
+        
         this.xstart = this.x_pos + this.border_x;
         this.xend = this.width - this.border_x;
 
@@ -153,6 +163,17 @@ class ParallelCoordinates
         this.yend = this.y_pos + this.height - this.border_y;
 
         this.calculatePosition();
+
+
+        //I will stream the data
+        //So that the user will see each element loading in and thus giving him the impression
+        //that the program is currently working
+
+        //We declare a state machine with two states (waiting_for_first_element, first_element_read)
+        // we'll look at the first element (header) and determine number of axes and their names
+        // after that we'll update the line-segments
+        // but how the maximum and minimum for the interpolation is determined; no idea
+        this.first_element_read = false;
         
     }
     
@@ -171,7 +192,7 @@ class ParallelCoordinates
         this.selectedLine = -1;
 
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
-        this.lines_of_tuple = []
+ this.lines_of_tuple = []
 
         this.background_redraw = true;
         this.axis_redraw = true;
@@ -194,7 +215,10 @@ class ParallelCoordinates
         });
     }
 
-
+    streamData(element)
+    {
+        
+    }
 
     // data[0][i] are the header values
     parseData(data)
@@ -203,7 +227,7 @@ class ParallelCoordinates
         
         this.data = data;
         let tuple_data = []
-        console.log(data);
+
         for (let i = 0; i < this.data[0].length; i++)
     	{
     	    tuple_data.push([]);
@@ -217,6 +241,7 @@ class ParallelCoordinates
     	//TODO: replace it with evaluation function
     	this.number_of_axes = this.data[0].length;
 
+        this.number_of_bins = this.number_of_axes - 1;
         
         for(let it = 0; it < this.data.length; it++)
         {
@@ -233,7 +258,7 @@ class ParallelCoordinates
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
             //constructor(name, x1, y1, x2, y2, color, data_tuple)
-    	    let current_axis = new Axis(this.data[0][i], //name
+    	    let current_axis = new Axis(this.data[0][i], //we use the csv-header for the axis name 
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.border_y,
                                         this.x_pos + this.border_x + this.distance * i,
@@ -296,27 +321,36 @@ class ParallelCoordinates
         
     }
 
+
+    //Used in redrawing 
     calculatePosition()
     {
 
-        //Determine distance
+        //Determine distance between each axis with new canvas size
         this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
 
 
-        //Generate Axis
+        //Update Axis
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
-            //constructor(name, x1, y1, x2, y2, color, data_tuple)
+            if(this.axes[i].being_dragged)
+            {
+
+            }
 
     	    this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
     	    this.axes[i].y1 = this.y_pos + this.border_y;
     	    this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
     	    this.axes[i].y2 = this.y_pos + this.height - this.border_y;
-    	    
+
+            //this.axes[i].updateBoxes();
 
     	}
 
-        //Generate LineSegments
+        //Update Bins
+        
+        
+        //Update LineSegments
         for( let i = 0; i < this.number_of_axes - 1; i++)
         {
             
@@ -358,6 +392,12 @@ class ParallelCoordinates
     
     
     render()
+    selectData
+
+    //
+
+    
+    //selectData(int, int)
     {
 
         this.backgroundCtx0.clearRect(0, 0, this.backgroundCanvas0.width, this.backgroundCanvas0.height);
@@ -373,12 +413,15 @@ class ParallelCoordinates
             this.linesegment_redraw = false;
             
             this.linesegmentCtx2.clearRect(0, 0, this.linesegmentCanvas2.width, this.linesegmentCanvas2.height);
+
+
             //render LineSegment
             for(const arr of this.data_line_segments)
             {
+                
                 for(const line_segment of arr)
                 {
-                    
+
                     this.linesegmentCtx2.fillStyle = "#000000";
                     this.linesegmentCtx2.beginPath();
                     this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
@@ -451,19 +494,23 @@ class ParallelCoordinates
                 current_axis.render(this.axisCtx1);
             }
         }
-    }
-    //selectData(int, int)
-    selectData(mouse_x, mouse_y)
+    }clearRect(mouse_x, mouse_y)
     {
-
-
-        this.selectedline_redraw = true;
-
-        //GetSegment
         const p_x = mouse_x - this.xstart;
         const p_y = mouse_y - this.ystart;
 
-        const segment = Math.floor(p_x / this.distance);
+        //handle axis selection
+
+        this.selected_axis_redraw = this;
+
+        
+        
+        //handle selection_line
+
+        selectedline_redraw.true = const;
+
+        //GetSegment
+        true segment = Math.floor(p_x / this.distance);
 
 
 
@@ -524,7 +571,8 @@ const max_number_of_inbetween_values_of_axis = 10;
 
 class Axis
 {
-    
+    static axis_name_font_size = 40; // in px
+    static axis_name_offset = 80; // in px
     
     constructor(name, x1, y1, x2, y2, color, data_tuple)
     {
@@ -556,16 +604,30 @@ class Axis
         //         pos = 0.038137
         //Example: let pos = axis.interpolation("Green");
         //         pos = 0.5
-        this.interpolation = this.createInterpolation(data_tuple);
+
+        if(data_tuple.length != 0)
+        {
+            this.interpolation = this.createInterpolation(data_tuple);
+        }else
+        {
+            this.interpolation = null;
+        }
 
 
-       
+
+        this.being_dragged = false;
 
         
         //Display-Color
         this.color = color;
     }
 
+
+    addElement()
+    {
+        
+    }
+     
 
     //let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
     // table[0] => [1,2,3]
@@ -663,10 +725,10 @@ class Axis
 
         //Name
         ctx.fillStyle = global_axis_text_color;
-        ctx.font = "40px Arial";
-        ctx.textBaseline = "bottom";
+        ctx.font = Axis.axis_name_font_size+"px Arial"; 
+        ctx.textBaseline = "top";
         ctx.textAlign = "center";
-        ctx.fillText(this.name, this.x2 ,this.y2 + 80);
+        ctx.fillText(this.name, this.x1 ,this.y1 - Axis.axis_name_offset);
 
                 
         //Draw value in between 
@@ -785,6 +847,66 @@ class Axis
 
 
 
+class Bin
+{
+    /*
+     * @param {number} dimension sets the number of rows and column (e.g 64 => 64x64, 400 => 400x400)
+     * @param {number} ystart of axis for positioning
+     * @param {number} yend of axis for positioning
+     * @param {number} x_axis_last x position of left axis 
+     * @param {number} x_axis_next x position of right axis
+     *
+     *
+     */
+      
+    constructor(dimension, ystart, yend, x_axis_last, x_axis_next)
+    {
+        this.dimension = dimension;
+        this.ystart = ystart;
+        this.yend = yend;
+        this.x_axis_last = x_axis_last;
+        this.x_axis_next = x_axis_next;
+        
+        this.matrix = [];
+
+        //initialize zero matrix
+        for(let it = 0; it < dimension; it++)
+        {
+            let row = [];
+            for(let jk = 0; jk < dimension; jk++)
+            {
+                row.push(0);
+            }
+                    
+            this.matrix.push(row);
+        }
+
+        this.total_number = 0;
+    }
+
+    /*
+     * x_value and y_value must be between 0.0 and 1.0
+     * @param {number} x_value , value of the left axis
+     * @param {number} y_value , value of the right axis
+     *
+     */
+    addPair(x_value, y_value)
+    {
+        if(x_value < 0 || x_value > 1 || y_value < 0 || y_value > 1)return;
+
+        let x_index = Math.ceil((this.dimension - 1) * x_value);
+        let y_index = Math.ceil((this.dimension - 1) * y_value);
+
+        this.matrix[x_value][y_value]++;
+
+        this.total_number++;
+    }
+
+    render(ctx)
+    {
+        
+    }
+}
 
 
         
