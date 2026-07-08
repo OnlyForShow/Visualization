@@ -45,12 +45,13 @@ function init() {
     parallelCoordinates_visual.addEventListener('pointerup', up);
 
     parallelCoordinates_visual.addEventListener("wheel", mouse_wheel);
+
     
 
     window.addEventListener('resize', resize);
     resize();
     
-    //window.requestAnimationFrame(draw);
+    window.requestAnimationFrame(draw);
 }
 
 function resize() {
@@ -77,22 +78,24 @@ function up(evt)
     const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
     
-    parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
+    parallelCoordinates_visual.releaseData(evt.x*window.devicePixelRatio - rect.x,
                                           evt.y*window.devicePixelRatio - rect.y,
                                           );
+    
+    
     window.requestAnimationFrame(draw);
 }
 
 function down(evt)
 {
 
-
+    if(evt.ctrlKey)console.log("multiselect");
     dragging = true;
     
     const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
     
-    parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
+    parallelCoordinates_visual.clickData(evt.x*window.devicePixelRatio - rect.x,
                                           evt.y*window.devicePixelRatio - rect.y,
                                           );
     window.requestAnimationFrame(draw);
@@ -105,13 +108,10 @@ function move(evt) {
     const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
 
-    if(dragging)
-    {
-        
-    }
     
     parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
                                           evt.y*window.devicePixelRatio - rect.y,
+                                          dragging
                                           );
     window.requestAnimationFrame(draw);
 }

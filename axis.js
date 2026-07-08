@@ -110,7 +110,9 @@ class ParallelCoordinates
         //div element where all canvases are stacked on top of each other
         this.container = null;
 
-     
+        this.first_element_read = false;
+
+        this.total_data_element = 1;
 
 
 
@@ -227,18 +229,38 @@ class ParallelCoordinates
         this.selectedLine = -1;
 
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
- this.lines_of_tuple = []
+        this.lines_of_tuple = []
 
         this.background_redraw = true;
         this.axis_redraw = true;
         this.linesegment_redraw = true;
         this.selectedline_redraw = true;
-        this.zoom_redraw = true; 
+        this.zoom_redraw = true;
 
+        this.first_element_read = false;
+
+        this.total_data_element = 1;
+        
     }
 
     parseCSV(CSV_file)
     {
+
+        Papa.parse(CSV_file, {
+            header : false,
+            skipEmptyLines : true,
+            worker : true,
+            //step : (row) =>
+            //{
+            //    this.streamData(row.data);
+            //}
+            complete : (results) =>
+            {
+                this.parseData(results.data);
+            }
+        });
+
+        
         Papa.parse(CSV_file, {
             header : false,
             skipEmptyLines : true,
@@ -250,8 +272,104 @@ class ParallelCoordinates
         });
     }
 
-    streamData(element)
+    streamData(elementRow)
     {
+        if(!this.first_element_read)
+        {
+            this.resetVisualization();
+            this.data = [];
+
+    	    this.number_of_axes = elementRow.length;
+            
+            this.number_of_bins = this.number_of_axes - 1;
+
+            
+            this.first_element_read = true;
+
+            //Determine distance
+            this.distance = (this.width - 2 * this.border_x) / (this.number_of_axes - 1);
+
+
+            //Generate Axis
+    	    for( let i = 0; i < this.number_of_axes; i++)
+    	    {
+                //constructor(name, x1, y1, x2, y2, color, canvasContext, data_tuple)
+    	        let current_axis = new Axis(elementRow[i], //we use the csv-header for the axis name 
+                                            this.x_pos + this.border_x + this.distance * i,
+                                            this.y_pos + this.border_y,
+                                            this.x_pos + this.border_x + this.distance * i,
+                                            this.y_pos + this.height - this.border_y,
+                                            global_axis_color,
+                                            this.axisCtx1,
+                                            []
+                                           );
+                
+
+
+    	        this.axes.push(current_axis);
+    	        
+    	        // Order position
+    	        this.axes_order.push(i);
+    	        
+    	    }
+            return;
+        }
+
+        this.data.push(elementRow);
+
+        //add Axis element
+    	for( let i = 0; i < this.number_of_axes; i++)
+    	{
+            this.axis[i].addElement(element[i]);	    
+    	}
+
+        
+        this.lines_of_tuple.push(new Array());
+
+        
+        //Generate LineSegments
+        for( let i = 0; i < this.number_of_axes - 1; i++)
+        {
+            this.data_line_segments.push([]);
+            
+
+            let current_axis = this.axes[this.axes_order[i]];
+            let next_axis = this.axes[this.axes_order[i+1]];
+
+            const x_pos = current_axis.x1;
+            const x_pos_next = next_axis.x1;
+            
+            const value_current_axis = element[this.axes_order[i]];
+            const value_next_axis = element[this.axes_order[i+1]];
+
+            
+            if(current_axis.interpolation === null)return;
+            if(next_axis.interpolation === null)return;
+
+            
+            const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
+            const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
+            
+            
+            
+            const y_current = this.yend - current_axis_relative_pos * (this.yend - this.ystart);
+            const y_next = this.yend - next_axis_relative_pos * (this.yend - this.ystart);
+            
+            
+            let line_segment = new LineSegment(x_pos, y_current,                //x1, y1
+                                               x_pos_next, y_next,              //x2, y2
+                                               global_line_segment_color,       //color
+                                               this.total_data_element        //tuple-reference
+                                              );
+            
+            this.data_line_segments[i].push(line_segment); 
+
+            this.lines_of_tuple[this.total_data_element].push(this.data_line_segments[i][this.data_line_segments[i].length - 1]);
+
+            this.total_data_element++;
+        }
+
+        
         
     }
 
@@ -292,7 +410,7 @@ class ParallelCoordinates
         //Generate Axis
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
-            //constructor(name, x1, y1, x2, y2, color, data_tuple)
+            //constructor(name, x1, y1, x2, y2, color, canvasContext, data_tuple)
     	    let current_axis = new Axis(this.data[0][i], //we use the csv-header for the axis name 
                                         this.x_pos + this.border_x + this.distance * i,
                                         this.y_pos + this.border_y,
@@ -375,7 +493,8 @@ class ParallelCoordinates
     	{
             if(this.axes[i].being_dragged)
             {
-
+                this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
+                this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
             }
 
     	    this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
@@ -438,7 +557,7 @@ class ParallelCoordinates
     
     render()
     {
-
+        
         this.backgroundCtx0.clearRect(0, 0, this.backgroundCanvas0.width, this.backgroundCanvas0.height);
         
         //set background
@@ -535,16 +654,59 @@ class ParallelCoordinates
         }
     }
 
-    //selectData(int, int)
-    selectData(mouse_x, mouse_y)
+    releaseData(mouse_x, mouse_y)
     {
-        const p_x = mouse_x - this.xstart;
-        const p_y = mouse_y - this.ystart;
+        
+    }
+
+    clickData(mouse_x, mouse_y)
+    {
+        let collision = false;
+        
+        for(let axis of this.axes)
+        {
+            axis.selected_reorder_box = false;
+            axis.selected_selection_box = false;
+            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
+            {
+
+                axis.selected_reorder_box = true;
+                this.selectedAxis = axis;
+                this.cursorCanvas.style.cursor="ew-resize";
+                collision = true;
+                break;
+            }
+            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
+            {
+                axis.selected_selection_box = true;
+                this.cursorCanvas.style.cursor="ns-resize";
+                collision = true;                
+                break;
+            }
+        }
+
+        if(!collision)
+        {
+            this.cursorCanvas.style.cursor = "default";
+        }
+    }
+    
+    //selectData(int, int)
+    selectData(mouse_x, mouse_y, dragging)
+    {
+
+        if(dragging)
+        {
+            
+        }
 
         //handle axis selection
 
         this.selected_axis_redraw = true;
         this.axis_redraw = true;
+
+        let collision = false;
+        
         for(let axis of this.axes)
         {
             axis.selected_reorder_box = false;
@@ -554,21 +716,29 @@ class ParallelCoordinates
 
                 axis.selected_reorder_box = true;
                 this.cursorCanvas.style.cursor="ew-resize";
+                collision = true;
                 break;
             }
             if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
             {
                 axis.selected_selection_box = true;
                 this.cursorCanvas.style.cursor="ns-resize";
+                collision = true;                
                 break;
             }
         }
-        
+
+        if(!collision)
+        {
+            this.cursorCanvas.style.cursor = "default";
+        }
         
         //handle selection_line
 
         this.selectedline_redraw = true;
-
+        
+        const p_x = mouse_x - this.xstart;
+        const p_y = mouse_y - this.ystart;
         //GetSegment
         const segment = Math.floor(p_x / this.distance);
 
@@ -578,6 +748,8 @@ class ParallelCoordinates
         
         const segment_lines = this.data_line_segments[segment];
 
+        if(!segment_lines)return;
+        
         let d_min = Infinity;
         let min_line_segment = null;
         //choose closest line
@@ -699,7 +871,9 @@ class Axis
         //the interpolation gets set in the function
         this.streamInterpolation(elem);
     }
-     
+
+    
+    
     updateBoxes()
     {
     
