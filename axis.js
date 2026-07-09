@@ -1,5 +1,3 @@
-                                                      
-
 let example_data = [["id","id*5","e^id","Comment"],
                     [1,5,Math.exp(1),"Wow"],
                     [2,10,Math.exp(2),"Cool"],
@@ -53,8 +51,10 @@ function textBounds(ctx, text, x, y) {
 
 class ParallelCoordinates
 {
-    constructor(x,y,width,height)
+    constructor(x,y,width,height, window)
     {
+        this.window = window;
+        
         this.axes = []; // Axis []
         this.axes_order = []; // int []
 
@@ -81,7 +81,13 @@ class ParallelCoordinates
         this.distance =  0;
 
         this.selectedLine = -1;
+        this.selectedLines = [];
 
+        this.selectedReorderAxis = null;
+        this.selectedReorderAxisReference = null; // order_axis position index : integer
+        this.selectedReorderAxisXPosReference = null; // order_axis x position  : integer
+
+        
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
 
@@ -110,11 +116,19 @@ class ParallelCoordinates
         //div element where all canvases are stacked on top of each other
         this.container = null;
 
+        this.total_data_element = 1;
+        
+        //I will stream the data
+        //So that the user will see each element loading in and thus giving him the impression
+        //that the program is currently working
+
+        //We declare a state machine with two states (waiting_for_first_element, first_element_read)
+        // we'll look at the first element (header) and determine number of axes and their names
+        // after that we'll update the line-segments
+        // but how the maximum and minimum for the interpolation is determined; no idea
         this.first_element_read = false;
 
-        this.total_data_element = 1;
-
-
+        
 
     }
 
@@ -202,15 +216,7 @@ class ParallelCoordinates
         this.calculatePosition();
 
 
-        //I will stream the data
-        //So that the user will see each element loading in and thus giving him the impression
-        //that the program is currently working
 
-        //We declare a state machine with two states (waiting_for_first_element, first_element_read)
-        // we'll look at the first element (header) and determine number of axes and their names
-        // after that we'll update the line-segments
-        // but how the maximum and minimum for the interpolation is determined; no idea
-        this.first_element_read = false;
         
     }
     
@@ -227,6 +233,7 @@ class ParallelCoordinates
         this.distance =  0;
 
         this.selectedLine = -1;
+        this.selectedLines = [];
 
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
@@ -240,25 +247,37 @@ class ParallelCoordinates
         this.first_element_read = false;
 
         this.total_data_element = 1;
+
+        //I will stream the data
+        //So that the user will see each element loading in and thus giving him the impression
+        //that the program is currently working
+
+        //We declare a state machine with two states (waiting_for_first_element, first_element_read)
+        // we'll look at the first element (header) and determine number of axes and their names
+        // after that we'll update the line-segments
+        // but how the maximum and minimum for the interpolation is determined; no idea
+        this.first_element_read = false;
+
         
     }
 
     parseCSV(CSV_file)
     {
 
-        Papa.parse(CSV_file, {
-            header : false,
-            skipEmptyLines : true,
-            worker : true,
-            //step : (row) =>
-            //{
-            //    this.streamData(row.data);
-            //}
-            complete : (results) =>
-            {
-                this.parseData(results.data);
-            }
-        });
+        
+        //Papa.parse(CSV_file, {
+        //    header : false,
+        //    skipEmptyLines : true,
+        //    worker : true,
+        //    //step : (row) =>
+        //    //{
+        //    //    this.streamData(row.data);
+        //    //}
+        //    complete : (results) =>
+        //    {
+        //        this.parseData(results.data);
+        //    }
+        //});
 
         
         Papa.parse(CSV_file, {
@@ -491,18 +510,17 @@ class ParallelCoordinates
         //Update Axis
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
-            if(this.axes[i].being_dragged)
+            const k = this.axes_order[i];
+            if(!this.axes[k].being_reordered)
             {
-                this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
-                this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
+    	        this.axes[k].x1 = this.x_pos + this.border_x + this.distance * i;
+                this.axes[k].x2 = this.x_pos + this.border_x + this.distance * i;
             }
+                
+    	    this.axes[k].y1 = this.y_pos + this.border_y;
+    	    this.axes[k].y2 = this.y_pos + this.height - this.border_y;
 
-    	    this.axes[i].x1 = this.x_pos + this.border_x + this.distance * i;
-    	    this.axes[i].y1 = this.y_pos + this.border_y;
-    	    this.axes[i].x2 = this.x_pos + this.border_x + this.distance * i;
-    	    this.axes[i].y2 = this.y_pos + this.height - this.border_y;
-
-            this.axes[i].updateBoxes();
+            this.axes[k].updateBoxes();
 
     	}
 
@@ -537,8 +555,13 @@ class ParallelCoordinates
                 	
                 const y_current = this.yend - current_axis_relative_pos * (this.yend - this.ystart);
                 const y_next = this.yend - next_axis_relative_pos * (this.yend - this.ystart);
-                
 
+
+                //Handle reordered axis x position
+                
+                //Apply selection filter
+                
+                //Apply zoom
                 
 
                 this.data_line_segments[i][j-1].x1 = x_pos;
@@ -642,7 +665,6 @@ class ParallelCoordinates
         if(this.axis_redraw)
         {
             this.axis_redraw = false;
-            
             this.axisCtx1.clearRect(0, 0, this.axisCanvas1.width, this.axisCanvas1.height);
             //render axes
             for(let it = 0; it < this.number_of_axes; it++)
@@ -656,22 +678,61 @@ class ParallelCoordinates
 
     releaseData(mouse_x, mouse_y)
     {
-        
+        if(this.selectedReorderAxis != null)
+        {
+            console.log("Axis "+this.selectedReorderAxisReference+" was released");
+
+            let current_x = mouse_x - this.xstart;
+
+            
+
+            if(current_x > ( this.selectedReorderAxisReference) * this.distance)
+            {
+                this.selectedReorderAxis.x1 = this.xstart + Math.floor(current_x/this.distance) * this.distance;
+
+            }else if(current_x < ( this.selectedReorderAxisReference) * this.distance)
+            {
+                this.selectedReorderAxis.x1 = this.xstart + Math.ceil(current_x/this.distance) * this.distance;
+                
+            }
+            
+            
+            
+
+            this.axis_redraw = true;
+            this.linesegment_redraw = true;
+
+
+            this.selectedReorderAxis.being_reordered = false;
+            this.selectedReorderAxis = null;
+            this.selectedReorderAxisReference = null;
+
+            this.calculatePosition();
+        }
     }
 
     clickData(mouse_x, mouse_y)
     {
         let collision = false;
+
         
-        for(let axis of this.axes)
+        for(let iter = 0; iter < this.axes_order.length; iter++)
         {
+            
+            let axis = this.axes[this.axes_order[iter]];
             axis.selected_reorder_box = false;
             axis.selected_selection_box = false;
             if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
             {
+                console.log("You selected the "+iter+" axis.");
+                this.selectedReorderAxis = axis;
+                this.selectedReorderAxis.selected_reorder_box = true;
 
-                axis.selected_reorder_box = true;
-                this.selectedAxis = axis;
+                this.selectedReorderAxis.being_reordered = true;
+                
+                this.selectedReorderAxisReference = iter;
+          
+                
                 this.cursorCanvas.style.cursor="ew-resize";
                 collision = true;
                 break;
@@ -685,6 +746,7 @@ class ParallelCoordinates
             }
         }
 
+        
         if(!collision)
         {
             this.cursorCanvas.style.cursor = "default";
@@ -697,90 +759,148 @@ class ParallelCoordinates
 
         if(dragging)
         {
+            if(this.selectedReorderAxis != null)
+            {
+                console.log("Axis "+this.selectedReorderAxisReference+" is being dragged");
+
+                let current_x = mouse_x - this.xstart;
+
+                //we need canvas coordinates here
+                this.selectedReorderAxis.x1 = mouse_x;
+
+                let reordering_happening = false;
+                let reorder_pos = this.selectedReorderAxisReference;
+                if(current_x > ( this.selectedReorderAxisReference + 1) * this.distance)
+                {
+                    reorder_pos = Math.floor((current_x)/ this.distance);
+
+                }else if(current_x < ( this.selectedReorderAxisReference - 1) * this.distance)
+                {
+                    reorder_pos = Math.ceil((current_x)/ this.distance);
+                }
+                
+                //Switch the axes around if reordering happend
+                
+
+                const tmp = this.axes_order[reorder_pos];
+                this.axes_order[reorder_pos] = this.axes_order[this.selectedReorderAxisReference];
+                this.axes_order[this.selectedReorderAxisReference] = tmp;
+                this.selectedReorderAxisReference = reorder_pos;
+                
+                this.calculatePosition();
+
+                
+
+
+                
+                this.axis_redraw = true;
+                this.linesegment_redraw = true;
+                this.selectedline_redraw = true;
+                
+                
+            }
+
+            if(this.selectedSelectionAxis != null)
+            {
+
+            }
+
+            if(this.selectionZoomAxis != null)
+            {
+                
+            }
+                
+        }
+        else
+        {
+
+            //handle axis selection
+
+            this.selected_axis_redraw = true;
+            this.axis_redraw = true;
+
+            let collision = false;
             
-        }
-
-        //handle axis selection
-
-        this.selected_axis_redraw = true;
-        this.axis_redraw = true;
-
-        let collision = false;
-        
-        for(let axis of this.axes)
-        {
-            axis.selected_reorder_box = false;
-            axis.selected_selection_box = false;
-            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
+            for(let iter of this.axes_order)
             {
+                let axis = this.axes[iter];
+                axis.selected_reorder_box = false;
+                axis.selected_selection_box = false;
+                if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
+                {
+                    
+                    axis.selected_reorder_box = true;
+                    this.cursorCanvas.style.cursor="ew-resize";
+                    collision = true;
+                    break;
+                }
+                if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
+                {
 
-                axis.selected_reorder_box = true;
-                this.cursorCanvas.style.cursor="ew-resize";
-                collision = true;
-                break;
+                    axis.selected_selection_box = true;
+                    this.cursorCanvas.style.cursor="ns-resize";
+                    collision = true;                
+                    break;
+                }
             }
-            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
+
+            if(!collision)
             {
-                axis.selected_selection_box = true;
-                this.cursorCanvas.style.cursor="ns-resize";
-                collision = true;                
-                break;
+                this.cursorCanvas.style.cursor = "default";
             }
-        }
-
-        if(!collision)
-        {
-            this.cursorCanvas.style.cursor = "default";
-        }
-        
-        //handle selection_line
-
-        this.selectedline_redraw = true;
-        
-        const p_x = mouse_x - this.xstart;
-        const p_y = mouse_y - this.ystart;
-        //GetSegment
-        const segment = Math.floor(p_x / this.distance);
-
-
-
-        if(segment >= this.number_of_axes - 1 || segment < 0)return;
-        
-        const segment_lines = this.data_line_segments[segment];
-
-        if(!segment_lines)return;
-        
-        let d_min = Infinity;
-        let min_line_segment = null;
-        //choose closest line
-        for(let line_segment of segment_lines)
-        {
-
-            let nenner = ((line_segment.x2 - line_segment.x1)**2 + (line_segment.y2 - line_segment.y1)**2);
             
-            let d = Math.abs((line_segment.y2 - line_segment.y1)*mouse_x -
-                             (line_segment.x2 - line_segment.x1)*mouse_y +
-                             (line_segment.x2 * line_segment.y1) -
-                             (line_segment.y2 * line_segment.x1));
+            //handle selection_line
 
-            d /= nenner;
+            this.selectedline_redraw = true;
+            
+            const p_x = mouse_x - this.xstart;
+            const p_y = mouse_y - this.ystart;
+            //GetSegment
+            const segment = Math.floor(p_x / this.distance);
 
 
-            if(d < d_min)
+
+            if(segment >= this.number_of_axes - 1 || segment < 0)return;
+            
+            const segment_lines = this.data_line_segments[segment];
+
+            if(!segment_lines)return;
+            
+            let d_min = Infinity;
+            let min_line_segment = null;
+            //choose closest line
+            for(let line_segment of segment_lines)
             {
-                d_min = d;
-                min_line_segment = line_segment;
+
+                let nenner = ((line_segment.x2 - line_segment.x1)**2 + (line_segment.y2 - line_segment.y1)**2);
+                
+                let d = Math.abs((line_segment.y2 - line_segment.y1)*mouse_x -
+                                 (line_segment.x2 - line_segment.x1)*mouse_y +
+                                 (line_segment.x2 * line_segment.y1) -
+                                 (line_segment.y2 * line_segment.x1));
+
+                d /= nenner;
+
+
+                if(d < d_min)
+                {
+                    d_min = d;
+                    min_line_segment = line_segment;
+                }
             }
+
+            
+            if(min_line_segment != null)
+                this.selectedLine = min_line_segment.tuple;
+
         }
-
-        
-        if(min_line_segment != null)
-            this.selectedLine = min_line_segment.tuple;
-
-
         
     }
 
+    redraw()
+    {
+        window.requestAnimationFrame(this.render);
+    }
 
 }
 
@@ -856,7 +976,7 @@ class Axis
         this.selectionBox = {x: 0, y: 0, w: 0,h: 0};
         this.selected_selection_box = false,
         
-        this.being_dragged = false;
+        this.being_reordered = false;
 
         
         //Display-Color

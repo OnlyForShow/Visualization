@@ -112,7 +112,9 @@ function move(evt) {
     parallelCoordinates_visual.selectData(evt.x*window.devicePixelRatio - rect.x,
                                           evt.y*window.devicePixelRatio - rect.y,
                                           dragging
-                                          );
+                                         );
+
+
     window.requestAnimationFrame(draw);
 }
 
