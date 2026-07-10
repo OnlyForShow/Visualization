@@ -12,7 +12,8 @@ let example_data = [["id","id*5","e^id","Comment"],
 
 
 const reorder_box_color = "rgba(255,255,255,0.5)";
-const selection_box_color = "rgba(255,255,255,0.5)";
+const selection_box_color_hover = "rgba(255,255,255,0.5)";
+const selection_box_color_filter = "rgba(255,255,0,0.5)";
 
 const global_background_color     = "555555";
 
@@ -48,6 +49,11 @@ function textBounds(ctx, text, x, y) {
     };
 }
 
+function clamp(value, min, max)
+{
+    return ((value <= min) ? min : (value >= max ? max : value));
+}
+
 
 class ParallelCoordinates
 {
@@ -59,6 +65,7 @@ class ParallelCoordinates
         this.axes_order = []; // int []
 
         this.data_line_segments = []; // LineSegment [][]
+        this.visible_data_line_segments = [];
         
         this.width = width;
         this.height = height;
@@ -87,6 +94,8 @@ class ParallelCoordinates
         this.selectedReorderAxisReference = null; // order_axis position index : integer
         this.selectedReorderAxisXPosReference = null; // order_axis x position  : integer
 
+        this.selectedSelectionAxis = null;
+        
         
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
@@ -226,7 +235,7 @@ class ParallelCoordinates
         this.axes_order = []; // int []
 
         this.data_line_segments = []; // LineSegment [][]
-        
+        this.visible_data_line_segments = [];
 
         this.number_of_axes = 0;
         
@@ -269,13 +278,9 @@ class ParallelCoordinates
         //    header : false,
         //    skipEmptyLines : true,
         //    worker : true,
-        //    //step : (row) =>
-        //    //{
-        //    //    this.streamData(row.data);
-        //    //}
-        //    complete : (results) =>
+        //    step : (row) =>
         //    {
-        //        this.parseData(results.data);
+        //        this.streamData(row.data);
         //    }
         //});
 
@@ -331,6 +336,7 @@ class ParallelCoordinates
     	        this.axes_order.push(i);
     	        
     	    }
+            this.data.push(elementRow);
             return;
         }
 
@@ -339,12 +345,15 @@ class ParallelCoordinates
         //add Axis element
     	for( let i = 0; i < this.number_of_axes; i++)
     	{
-            this.axis[i].addElement(element[i]);	    
+            this.axes[i].addElement(elementRow[i]);	    
     	}
 
         
         this.lines_of_tuple.push(new Array());
 
+        
+        this.visible_data_line_segments.push(true);                    
+        
         
         //Generate LineSegments
         for( let i = 0; i < this.number_of_axes - 1; i++)
@@ -358,8 +367,8 @@ class ParallelCoordinates
             const x_pos = current_axis.x1;
             const x_pos_next = next_axis.x1;
             
-            const value_current_axis = element[this.axes_order[i]];
-            const value_next_axis = element[this.axes_order[i+1]];
+            const value_current_axis = elementRow[this.axes_order[i]];
+            const value_next_axis = elementRow[this.axes_order[i+1]];
 
             
             if(current_axis.interpolation === null)return;
@@ -418,8 +427,8 @@ class ParallelCoordinates
         for(let it = 0; it < this.data.length; it++)
         {
             this.lines_of_tuple.push(new Array());
+            this.visible_data_line_segments.push(true);
         }
-
 
         
         //Determine distance
@@ -449,6 +458,8 @@ class ParallelCoordinates
     	
     	}
 
+
+        
         //Generate LineSegments
         for( let i = 0; i < this.number_of_axes - 1; i++)
         {
@@ -526,6 +537,12 @@ class ParallelCoordinates
 
         //Update Bins
         
+
+        for(let j = 1; j < this.data.length; j++)
+        {
+            this.visible_data_line_segments[j-1] = true;            
+        }
+
         
         //Update LineSegments
         for( let i = 0; i < this.number_of_axes - 1; i++)
@@ -550,25 +567,35 @@ class ParallelCoordinates
                 
                 const current_axis_relative_pos = current_axis.interpolation(value_current_axis);
                 const next_axis_relative_pos = next_axis.interpolation(value_next_axis);
-                	
-                	
+
+                //Apply selection filter
+
+                if(current_axis.selected_box_min > 1.0 - current_axis_relative_pos ||
+                   current_axis.selected_box_max < 1.0 - current_axis_relative_pos ||
+                   next_axis.selected_box_min > 1.0 - next_axis_relative_pos ||
+                   next_axis.selected_box_max < 1.0 - next_axis_relative_pos 
+                  )
+                {
+                    this.visible_data_line_segments[j-1] &= false;
+                }
+                
+                
+                //Apply zoom                	
                 	
                 const y_current = this.yend - current_axis_relative_pos * (this.yend - this.ystart);
                 const y_next = this.yend - next_axis_relative_pos * (this.yend - this.ystart);
 
 
-                //Handle reordered axis x position
                 
-                //Apply selection filter
                 
-                //Apply zoom
+
                 
 
                 this.data_line_segments[i][j-1].x1 = x_pos;
                 this.data_line_segments[i][j-1].y1 = y_current;
                 this.data_line_segments[i][j-1].x2 = x_pos_next;
                 this.data_line_segments[i][j-1].y2 = y_next;
-                
+
                                 
             }
         }
@@ -599,10 +626,10 @@ class ParallelCoordinates
             //render LineSegment
             for(const arr of this.data_line_segments)
             {
-                
-                for(const line_segment of arr)
+                for(let it = 0; it < arr.length; it++)
                 {
-
+                    if(!this.visible_data_line_segments[it])continue;
+                    const line_segment = arr[it];
                     this.linesegmentCtx2.fillStyle = "#000000";
                     this.linesegmentCtx2.beginPath();
                     this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
@@ -653,7 +680,14 @@ class ParallelCoordinates
                 this.selectedlineCtx3.font = "40px Arial";
                 this.selectedlineCtx3.fillStyle = global_selection_text_color;
                 this.selectedlineCtx3.textBaseline = "top";
-                const tuple_display = this.data[this.selectedLine];
+                const tuple_copy = this.data[this.selectedLine];
+
+                let tuple_display = new Array(tuple_copy.length);
+                for(let index = 0; index < this.axes_order.length; index++)
+                {
+                    tuple_display[index] = tuple_copy[this.axes_order[index]];
+                }
+                
                 this.selectedlineCtx3.fillText(`(${tuple_display.join(", ")})`, this.x_pos, this.y_pos);
             }
 
@@ -680,7 +714,7 @@ class ParallelCoordinates
     {
         if(this.selectedReorderAxis != null)
         {
-            console.log("Axis "+this.selectedReorderAxisReference+" was released");
+            
 
             let current_x = mouse_x - this.xstart;
 
@@ -709,6 +743,15 @@ class ParallelCoordinates
 
             this.calculatePosition();
         }
+
+        if(this.selectedSelectionAxis != null)
+        {
+
+            this.selectedSelectionAxis = null;
+
+        }
+
+        
     }
 
     clickData(mouse_x, mouse_y)
@@ -724,7 +767,7 @@ class ParallelCoordinates
             axis.selected_selection_box = false;
             if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
             {
-                console.log("You selected the "+iter+" axis.");
+             
                 this.selectedReorderAxis = axis;
                 this.selectedReorderAxis.selected_reorder_box = true;
 
@@ -739,13 +782,30 @@ class ParallelCoordinates
             }
             if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
             {
-                axis.selected_selection_box = true;
+                this.selectedSelectionAxis = axis;
+                
+                this.selectedSelectionAxis.selected_selection_box_hover = true;
+                this.selectedSelectionAxis.selected_selection_box_filter = true;
+
+                this.being_filtered = true;
+
+                this.selectedSelectionAxis.setFilerMin((mouse_y - axis.selectionBox.y)/axis.selectionBox.h);
+                this.selectedSelectionAxis.setFilterMax(this.selectedSelectionAxis.selected_box_min);
+                
+
+                
                 this.cursorCanvas.style.cursor="ns-resize";
                 collision = true;                
                 break;
             }
+
+            if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.zoomBox))
+            {
+                
+            }
         }
 
+        
         
         if(!collision)
         {
@@ -761,7 +821,7 @@ class ParallelCoordinates
         {
             if(this.selectedReorderAxis != null)
             {
-                console.log("Axis "+this.selectedReorderAxisReference+" is being dragged");
+              
 
                 let current_x = mouse_x - this.xstart;
 
@@ -802,7 +862,17 @@ class ParallelCoordinates
 
             if(this.selectedSelectionAxis != null)
             {
+                this.selectedSelectionAxis.setFilterMax((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
 
+                this.selectedSelectionAxis.selected_selection_box_filter = true;
+               
+                this.being_filtered = true;
+
+                this.calculatePosition();
+                                
+                this.axis_redraw = true;
+                this.linesegment_redraw = true;
+                this.selectedline_redraw = true;
             }
 
             if(this.selectionZoomAxis != null)
@@ -825,7 +895,7 @@ class ParallelCoordinates
             {
                 let axis = this.axes[iter];
                 axis.selected_reorder_box = false;
-                axis.selected_selection_box = false;
+                axis.selected_selection_box_hover = false;
                 if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.reorder_box))
                 {
                     
@@ -837,7 +907,7 @@ class ParallelCoordinates
                 if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
                 {
 
-                    axis.selected_selection_box = true;
+                    axis.selected_selection_box_hover = true;
                     this.cursorCanvas.style.cursor="ns-resize";
                     collision = true;                
                     break;
@@ -868,10 +938,12 @@ class ParallelCoordinates
             
             let d_min = Infinity;
             let min_line_segment = null;
+            this.selectedLine = -1;
             //choose closest line
-            for(let line_segment of segment_lines)
+            for(let it = 0; it < segment_lines.length; it++)
             {
-
+                if(!this.visible_data_line_segments[it])continue;
+                let line_segment = segment_lines[it];
                 let nenner = ((line_segment.x2 - line_segment.x1)**2 + (line_segment.y2 - line_segment.y1)**2);
                 
                 let d = Math.abs((line_segment.y2 - line_segment.y1)*mouse_x -
@@ -897,10 +969,6 @@ class ParallelCoordinates
         
     }
 
-    redraw()
-    {
-        window.requestAnimationFrame(this.render);
-    }
 
 }
 
@@ -974,10 +1042,24 @@ class Axis
 
         
         this.selectionBox = {x: 0, y: 0, w: 0,h: 0};
-        this.selected_selection_box = false,
+        this.selected_selection_box_hover = false;
+
+        this.selectionFilterBox = {x: 0, y: 0, w: 0,h: 0};
+        this.selected_selection_box_filter = false;
+        this.selected_box_min = 0.0;
+        this.selected_box_max = 1.0;
+        this.selected_box_min_ref = 0.0;
+
+        
+        this.zoomBox = {x: 0, y: 0, w: 0, h: 0};
+        this.selected_zoomBox = false;
+        this.selected_zoom_min = 0.0;
+        this.selected_zoom_max = 1.0;
+
         
         this.being_reordered = false;
-
+        this.being_filtered = false;
+        this.being_zoomed = false;
         
         //Display-Color
         this.color = color;
@@ -992,6 +1074,33 @@ class Axis
         this.streamInterpolation(elem);
     }
 
+    setFilerMin(min)
+    {
+        this.selected_box_min_ref = min;
+    }
+
+    setFilterMax(max)
+    {
+        this.setFilterMinMax(this.selected_box_min_ref, max);
+    }
+    
+    
+    setFilterMinMax(min,max)
+    {
+        let m_min = min;
+        let m_max = max;
+        if(max < min)
+        {
+            m_max = min;
+            m_min = max
+        }
+
+        m_min = clamp(m_min,0.0,1.0);
+        m_max = clamp(m_max,0.0,1.0);
+        
+        this.selected_box_min = m_min;
+        this.selected_box_max = m_max;
+    }
     
     
     updateBoxes()
@@ -1025,6 +1134,17 @@ class Axis
                              w: width_selection_box,
                              h: this.y2 - this.y1};
 
+        const upper_y = this.selected_box_min * this.selectionBox.h + this.selectionBox.y
+        const lower_y = this.selected_box_max * this.selectionBox.h + this.selectionBox.y
+
+
+        
+        this.selectionFilterBox = {x: this.selectionBox.x,
+                                   y: upper_y,
+                                   w: this.selectionBox.w,
+                                   h: lower_y - upper_y};            
+
+        
     }
     
     //let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
@@ -1175,15 +1295,27 @@ class Axis
                          this.reorder_box.h);
         }
 
-        if(this.selected_selection_box)
+        if(this.selected_selection_box_hover)
         {
-            //Draw selection box
-            this.ctx.fillStyle = selection_box_color;
+            //Draw selection box hover
+            this.ctx.fillStyle = selection_box_color_hover;
             this.ctx.fillRect(this.selectionBox.x,
                          this.selectionBox.y,
                          this.selectionBox.w,
                          this.selectionBox.h);
         }
+
+        if(this.selected_selection_box_filter)
+        {
+            //Draw selection box hover
+            this.ctx.fillStyle = selection_box_color_filter;
+            this.ctx.fillRect(this.selectionFilterBox.x,
+                              this.selectionFilterBox.y,
+                              this.selectionFilterBox.w,
+                              this.selectionFilterBox.h);
+        }
+        
+        
         
         
         //draw axis
@@ -1262,7 +1394,7 @@ class Axis
             
             let step = null;
             for(let i = 0; i < ref_arr.length; i++)
-            {
+ {
                 if(ref_arr[i] > diff)
                 {
                     if(i == 0)
