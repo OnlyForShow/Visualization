@@ -14,6 +14,7 @@ let example_data = [["id","id*5","e^id","Comment"],
 const reorder_box_color = "rgba(255,255,255,0.5)";
 const selection_box_color_hover = "rgba(255,255,255,0.5)";
 const selection_box_color_filter = "rgba(255,255,0,0.5)";
+const selection_box_filter_boundary_color = "rgba(255,0,0,0.5)";
 
 const global_background_color     = "555555";
 
@@ -27,6 +28,14 @@ const global_axis_text_color      = "white";
 const width_selection_box = 40; //px
 
 const reorder_box_offset = 20; //px
+
+const SelectionStates = {
+    NONE_SELECTED : 0,
+    MIN_SELECTED : 1,    
+    MAX_SELECTED : 2,
+    MIDDLE_SELECTED : 3,
+    RELEASED : 10
+};
 
 //utility functions
 // p = {x , y}
@@ -95,7 +104,9 @@ class ParallelCoordinates
         this.selectedReorderAxisXPosReference = null; // order_axis x position  : integer
 
         this.selectedSelectionAxis = null;
-        
+
+        this.selectionSelectionState = 0;
+        this.no_reset_but_dragging = true;
         
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
@@ -746,7 +757,11 @@ class ParallelCoordinates
 
         if(this.selectedSelectionAxis != null)
         {
-
+            if(this.selectionSelectionState === SelectionStates.NONE_SELECTED && !this.no_reset_but_dragging)
+            {
+                this.selectedSelectionAxis.being_filtered = true;
+            }
+            this.selectionSelectionState = SelectionStates.RELEASED;
             this.selectedSelectionAxis = null;
 
         }
@@ -787,17 +802,48 @@ class ParallelCoordinates
                 this.selectedSelectionAxis.selected_selection_box_hover = true;
                 this.selectedSelectionAxis.selected_selection_box_filter = true;
 
-                this.being_filtered = true;
+                console.log("being filtered: "+axis.being_filtered);
 
-                this.selectedSelectionAxis.setFilerMin((mouse_y - axis.selectionBox.y)/axis.selectionBox.h);
-                this.selectedSelectionAxis.setFilterMax(this.selectedSelectionAxis.selected_box_min);
+
+                if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionMinimumBox) && axis.being_filtered)
+                {
+                    console.log("Minimum clicked");
+                    this.selectionSelectionState = SelectionStates.MIN_SELECTED;
+                    this.selectedSelectionAxis.setFilterMaxRef(this.selectedSelectionAxis.selected_box_max);
+
+                }else if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionMaximumBox) && axis.being_filtered)
+                {
+                    console.log("Maximum clicked");
+                    this.selectionSelectionState = SelectionStates.MAX_SELECTED;
+                    this.selectedSelectionAxis.setFilterMinRef(this.selectedSelectionAxis.selected_box_min);                    
+                }
+                else if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionFilterBox) && axis.being_filtered)
+                {
+                    console.log("Middlesection clicked");
+                    this.selectionSelectionState = SelectionStates.MIDDLE_SELECTED;
+                    this.selectedSelectionAxis.setFilterTranslateRef((mouse_y - axis.selectionBox.y)/axis.selectionBox.h);
+                }else
+                {
+                    this.selectionSelectionState = SelectionStates.NONE_SELECTED;
+                    console.log("Outside clicked");
+
+                    
+                    this.selectedSelectionAxis.resetFilter();
+                    this.no_reset_but_dragging = true;
+                }            
+
+                this.calculatePosition();
+                
+                this.axis_redraw = true;
+                this.linesegment_redraw = true;
+                this.selectedline_redraw = true;
                 
 
-                
-                this.cursorCanvas.style.cursor="ns-resize";
                 collision = true;                
                 break;
             }
+
+
 
             if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.zoomBox))
             {
@@ -819,10 +865,12 @@ class ParallelCoordinates
 
         if(dragging)
         {
+            
             if(this.selectedReorderAxis != null)
             {
-              
 
+
+                
                 let current_x = mouse_x - this.xstart;
 
                 //we need canvas coordinates here
@@ -862,12 +910,43 @@ class ParallelCoordinates
 
             if(this.selectedSelectionAxis != null)
             {
-                this.selectedSelectionAxis.setFilterMax((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                //Deactivate current selection
+                this.selectedLine = -1;
+                if(!this.selectedSelectionAxis.being_filtered)
+                {
 
+                    if(this.no_reset_but_dragging)
+                    {
+                        this.selectedSelectionAxis.setFilterMinRef((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                        this.selectedSelectionAxis.setFilterMin((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                        this.selectedSelectionAxis.setFilterMax(this.selectedSelectionAxis.selected_box_min);
+                        this.no_reset_but_dragging = false;
+                    }
+                    this.selectedSelectionAxis.setFilterMax((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+
+
+
+                }else
+                {
+                    switch(this.selectionSelectionState)
+                    {
+                        case SelectionStates.MIN_SELECTED:
+                        this.selectedSelectionAxis.setFilterMin((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                        console.log("minimum dragged");
+                        break;
+                        case SelectionStates.MAX_SELECTED:
+                        this.selectedSelectionAxis.setFilterMax((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                        console.log("maximum dragged");
+                        break;
+                        case SelectionStates.MIDDLE_SELECTED:
+                        this.selectedSelectionAxis.setOffsetFilterBox((mouse_y - this.selectedSelectionAxis.selectionBox.y)/this.selectedSelectionAxis.selectionBox.h);
+                        console.log("middle dragged");                        
+                        break;
+                    }
+                }
+
+                
                 this.selectedSelectionAxis.selected_selection_box_filter = true;
-               
-                this.being_filtered = true;
-
                 this.calculatePosition();
                                 
                 this.axis_redraw = true;
@@ -906,9 +985,23 @@ class ParallelCoordinates
                 }
                 if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionBox))
                 {
+                    if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionMinimumBox) && axis.being_filtered)
+                    {
+                        this.cursorCanvas.style.cursor="ns-resize";
+                    }else if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionMaximumBox) && axis.being_filtered)
+                    {
+                        this.cursorCanvas.style.cursor="ns-resize";
+                    }
+                    else if(point_intersect_rect({x : mouse_x, y : mouse_y}, axis.selectionFilterBox) && axis.being_filtered)
+                    {
+                        this.cursorCanvas.style.cursor="move";
+                    }else
+                    {
+                        this.cursorCanvas.style.cursor="crosshair";
+                    }            
 
                     axis.selected_selection_box_hover = true;
-                    this.cursorCanvas.style.cursor="ns-resize";
+
                     collision = true;                
                     break;
                 }
@@ -993,6 +1086,8 @@ class Axis
 {
     static axis_name_font_size = 40; // in px
     static axis_name_offset = 80; // in px
+
+    static BorderBoxOffset = 10; //ijn px
     
     constructor(name, x1, y1, x2, y2, color, canvas_context, data_tuple)
     {
@@ -1049,6 +1144,12 @@ class Axis
         this.selected_box_min = 0.0;
         this.selected_box_max = 1.0;
         this.selected_box_min_ref = 0.0;
+        this.selected_box_max_ref = 1.0;
+
+        this.selected_box_offset_ref = 0.0;
+
+        this.selectionMinimumBox = {x: 0, y: 0, w: 0,h: 0};
+        this.selectionMaximumBox = {x: 0, y: 0, w: 0,h: 0};
 
         
         this.zoomBox = {x: 0, y: 0, w: 0, h: 0};
@@ -1074,16 +1175,58 @@ class Axis
         this.streamInterpolation(elem);
     }
 
-    setFilerMin(min)
+    resetFilter()
+    {
+        this.selected_selection_box_filter = false;
+        this.being_filtered = false;
+        this.selected_box_min = 0.0;
+        this.selected_box_max = 1.0;
+        this.selected_box_min_ref = 0.0;
+        this.selected_box_max_ref = 1.0;
+        this.selected_box_offset_ref = 0.0;
+    }
+    
+    setFilterMinRef(min)
     {
         this.selected_box_min_ref = min;
     }
 
+    setFilterMin(min)
+    {
+        this.setFilterMinMax(min, this.selected_box_max_ref);
+    }
+
+    setFilterMaxRef(max)
+    {
+        this.selected_box_max_ref = max;
+    }
+    
     setFilterMax(max)
     {
         this.setFilterMinMax(this.selected_box_min_ref, max);
     }
     
+    setFilterTranslateRef(offset_ref)
+    {
+        this.selected_box_offset_ref = offset_ref;
+    }
+
+    setOffsetFilterBox(offset)
+    {
+        let m_min = (offset - this.selected_box_offset_ref) + this.selected_box_min;
+        let m_max = (offset - this.selected_box_offset_ref) + this.selected_box_max;
+        let m_offset = offset;
+
+        
+        m_min = clamp(m_min, 0.0, 1.0 - (this.selected_box_max - this.selected_box_min));
+        m_max = clamp(m_max, this.selected_box_max - this.selected_box_min, 1.0);
+        m_offset = clamp(m_offset, 0.0, 1.0);
+
+        
+        this.selected_box_offset_ref = m_offset;
+        this.selected_box_min = m_min;
+        this.selected_box_max = m_max;
+    }
     
     setFilterMinMax(min,max)
     {
@@ -1134,8 +1277,8 @@ class Axis
                              w: width_selection_box,
                              h: this.y2 - this.y1};
 
-        const upper_y = this.selected_box_min * this.selectionBox.h + this.selectionBox.y
-        const lower_y = this.selected_box_max * this.selectionBox.h + this.selectionBox.y
+        const upper_y = this.selected_box_min * this.selectionBox.h + this.selectionBox.y;
+        const lower_y = this.selected_box_max * this.selectionBox.h + this.selectionBox.y;
 
 
         
@@ -1144,7 +1287,17 @@ class Axis
                                    w: this.selectionBox.w,
                                    h: lower_y - upper_y};            
 
-        
+        this.selectionMinimumBox = {x: this.selectionFilterBox.x,
+                                    y: this.selectionFilterBox.y - Axis.BorderBoxOffset,
+                                    w: this.selectionFilterBox.w,
+                                    h: Axis.BorderBoxOffset * 2
+                                   };
+
+        this.selectionMaximumBox = {x: this.selectionFilterBox.x,
+                                    y: this.selectionFilterBox.y + this.selectionFilterBox.h - Axis.BorderBoxOffset,
+                                    w: this.selectionFilterBox.w,
+                                    h: Axis.BorderBoxOffset * 2
+                                   };
     }
     
     //let table = [[1,5,Math.exp(1),"Wow"],[2,10,Math.exp(2),"Cool"],[3,15,Math.exp(3),"Epic"]];
@@ -1183,7 +1336,6 @@ class Axis
          
             
             return (x) => {
-                
                 return (x - MIN_VALUE) / (MAX_VALUE - MIN_VALUE);
             };
             
@@ -1313,6 +1465,17 @@ class Axis
                               this.selectionFilterBox.y,
                               this.selectionFilterBox.w,
                               this.selectionFilterBox.h);
+
+            this.ctx.fillStyle = selection_box_filter_boundary_color;
+            this.ctx.fillRect(this.selectionMinimumBox.x,
+                              this.selectionMinimumBox.y + Axis.BorderBoxOffset,
+                              this.selectionMinimumBox.w,
+                              this.selectionMinimumBox.h - Axis.BorderBoxOffset);
+            
+            this.ctx.fillRect(this.selectionMaximumBox.x,
+                              this.selectionMaximumBox.y,
+                              this.selectionMaximumBox.w,
+                              this.selectionMaximumBox.h - Axis.BorderBoxOffset);
         }
         
         
