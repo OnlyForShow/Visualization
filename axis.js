@@ -16,10 +16,12 @@ const selection_box_color_hover = "rgba(255,255,255,0.5)";
 const selection_box_color_filter = "rgba(255,255,0,0.5)";
 const selection_box_filter_boundary_color = "rgba(255,0,0,0.5)";
 
-const global_background_color     = "555555";
+const outfiltered_segement_lines = "rgba(255,255,255,0.1)";
 
-const global_axis_color           = "222222";
-const global_line_segment_color   = "000000";
+const global_background_color     = "#555555";
+
+const global_axis_color           = "#222222";
+const global_line_segment_color   = "#000000";
 const global_selected_line_color  = "red";
 const global_selection_text_color = "white";
 const global_axis_text_color      = "white";
@@ -639,13 +641,21 @@ class ParallelCoordinates
             {
                 for(let it = 0; it < arr.length; it++)
                 {
-                    if(!this.visible_data_line_segments[it])continue;
+                    let line_color = "#222222";
+                    let line_width = 2;
+                    if(!this.visible_data_line_segments[it])
+                    {
+                        if((it+1) % 50!= 0)continue;
+                        line_color = outfiltered_segement_lines;
+                        line_width = 1;
+                    }
                     const line_segment = arr[it];
                     this.linesegmentCtx2.fillStyle = "#000000";
                     this.linesegmentCtx2.beginPath();
                     this.linesegmentCtx2.moveTo(line_segment.x1, line_segment.y1);
                     this.linesegmentCtx2.lineTo(line_segment.x2, line_segment.y2);
-                    this.linesegmentCtx2.strokeStyle = line_segment.color;
+                    this.linesegmentCtx2.strokeStyle = line_color;
+                    this.linesegmentCtx2.lineWidth = line_width;
                     this.linesegmentCtx2.stroke();
                     this.linesegmentCtx2.closePath();
                     
