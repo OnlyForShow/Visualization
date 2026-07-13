@@ -62,12 +62,20 @@ function resize() {
 
 function mouse_wheel(e)
 {
-    console.log("deltaX: "+e.deltaX);
-    console.log("deltaY: "+e.deltaY);
-    console.log("deltaMode: "+e.deltaMode);
-
-
+    
     e.preventDefault();
+
+    const canvas = parallelCoordinates_visual.getBackgroundCanvas();
+    const rect = canvas.getBoundingClientRect();
+    
+    parallelCoordinates_visual.zoomOnData(e.x*window.devicePixelRatio - rect.x,
+                                          e.y*window.devicePixelRatio - rect.y,
+                                          e.deltaY
+                                          );
+
+    
+    window.requestAnimationFrame(draw);
+    
 }
 
 function up(evt)
@@ -89,15 +97,23 @@ function up(evt)
 function down(evt)
 {
 
-    if(evt.ctrlKey)console.log("multiselect");
+
     dragging = true;
     
     const canvas = parallelCoordinates_visual.getBackgroundCanvas();
     const rect = canvas.getBoundingClientRect();
-    
-    parallelCoordinates_visual.clickData(evt.x*window.devicePixelRatio - rect.x,
-                                          evt.y*window.devicePixelRatio - rect.y,
-                                          );
+
+    if(evt.ctrlKey)
+    {
+        parallelCoordinates_visual.highlightData(evt.x*window.devicePixelRatio - rect.x,
+                                             evt.y*window.devicePixelRatio - rect.y,
+                                            );
+    }else
+    {
+        parallelCoordinates_visual.clickData(evt.x*window.devicePixelRatio - rect.x,
+                                             evt.y*window.devicePixelRatio - rect.y,
+                                            );
+    };
     window.requestAnimationFrame(draw);
 }
 
