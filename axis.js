@@ -50,6 +50,11 @@ const SelectionStates = {
     RELEASED : 10
 };
 
+const INTERATIVE_LENS_OPTION = {
+    SEMANTIC_ZOOM : 0,
+    RADIUS_ZOOM : 1
+};
+
 //utility functions
 // p = {x , y}
 // rect = {x, y, w, h}
@@ -111,6 +116,14 @@ class ParallelCoordinates
         this.x_pos = x;
         this.y_pos = y;
 
+
+        this.options_box = {x : 0 , y : 0, w : 0, h : 0};
+        this.reset_zoom_btn = {x : 0 , y : 0, w : 0, h : 0};
+        this.reset_selection_lines_btn = {x : 0 , y : 0, w : 0, h : 0};
+        this.set_interactive_lens_semantic_zoom_btn = {x : 0 , y : 0, w : 0, h : 0};
+        this.set_interactive_lens_radius_zoom_btn = {x : 0 , y : 0, w : 0, h : 0};
+
+        
         this.border_x = width*0.1; //in px 
         this.border_y = Axis.axis_name_offset + Axis.axis_name_font_size; //in px 
 
@@ -140,6 +153,17 @@ class ParallelCoordinates
         // tuple_index -> [[LineSegment1, LineSegment2, ...] ,[...]]
         this.lines_of_tuple = []
 
+
+        this.interactive_lens_mode = false;
+        this.interactive_lens_mode_option = INTERATIVE_LENS_OPTION.SEMANTIC_ZOOM;
+        this.interactive_lens_pos = {x : this.x_pos + (this.width - this.x_pos)/2 , y : this.y_pos + (this.height - this.y_pos)/2};
+        this.interactive_lens_radius = 100; // px
+        this.interactive_lens_zoom_filter_element_skipping = 100; // <--- Wow, this is some ugly naming right here. 
+        
+
+
+        
+        
         this.backgroundCanvas0 = document.createElement('canvas');
         this.linesegmentCanvas2 = document.createElement('canvas');
         this.selectedlineCanvas3 = document.createElement('canvas');
