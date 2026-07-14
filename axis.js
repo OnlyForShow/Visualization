@@ -1258,10 +1258,15 @@ class ParallelCoordinates
                 }
             }
 
+
             
             if(min_line_segment != null)
-                this.selectedLine = min_line_segment.tuple;
-
+            {
+                if(d_min < 0.05)
+                    this.selectedLine = min_line_segment.tuple;
+                else
+                    this.selectedLine = -1;
+            }
         }
         
     }
